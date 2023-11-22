@@ -93,7 +93,7 @@ var (
 	}
 
 	DebugConfig = &Config{
-		BindIP:   BindLoopBackIP,
+		BindIP:   BindAllIP,
 		BindPort: DefaultBindPort,
 
 		AdvertisePort: DefaultAdvertisePort,

@@ -16,6 +16,8 @@ import (
 type SyncMember struct {
 	config *Config
 
+	nodeName string
+
 	host Address
 
 	logger *slog.Logger
@@ -25,29 +27,31 @@ type SyncMember struct {
 
 	udpTransport *transport.UDPTransport
 
-	nMutex   *sync.Mutex
-	me       *Node
-	nodes    []*Node
-	nodesMap map[string]*Node // key: ip:port
+	nMutex     *sync.Mutex
+	me         *Node
+	nodes      []*Node
+	nodesMap   map[string]*Node // key: ip:port
+	waitAckMap map[string]*Node //key ip:port -> *Node
 
 	messageHandlers map[MessageType]func(*Message)
-	ackMap          map[string]*Node //key ip:port
 
 	stopCh  chan struct{}
 	stopVar *atomic.Bool
 }
 
-func NewSyncMember(config *Config) *SyncMember {
+func NewSyncMember(nodeName string, config *Config) *SyncMember {
 	s := &SyncMember{
-		config:  config,
-		stopCh:  make(chan struct{}, 2),
-		stopVar: new(atomic.Bool),
+		config:   config,
+		nodeName: nodeName,
+		stopCh:   make(chan struct{}, 2),
+		stopVar:  new(atomic.Bool),
 
-		me:       NewNode(ResolveAddr(fmt.Sprintf("%s:%d", config.AdvertiseIP.String(), config.AdvertisePort))),
-		nodes:    make([]*Node, 0),
-		nodesMap: make(map[string]*Node),
+		nMutex:     new(sync.Mutex),
+		nodes:      make([]*Node, 0),
+		nodesMap:   make(map[string]*Node),
+		waitAckMap: make(map[string]*Node),
 
-		nMutex: new(sync.Mutex),
+		messageHandlers: make(map[MessageType]func(*Message)),
 	}
 	err := s.init(config)
 	if err != nil {
@@ -77,7 +81,14 @@ func (s *SyncMember) init(config *Config) error {
 		PacketHandler: s.PacketHandler,
 	}
 
+	s.host = s.host.WithName(s.nodeName)
+	s.me = NewNode(s.host)
+
 	s.udpTransport = transport.NewUDPTransport(&udpConfig, s.stopVar)
+
+	s.RegisterMessageHandler(HeartBeat, s.handleHeartbeat)
+	s.RegisterMessageHandler(HeartBeatAck, s.handleAckHeartbeat)
+
 	return nil
 }
 
@@ -89,7 +100,25 @@ func (s *SyncMember) Join(addr string) error {
 	return nil
 }
 
+func (s *SyncMember) JoinDebug(addr string) error {
+	s.logger.Info("JoinDebug", "addr", addr)
+
+	node := NewNode(ResolveAddr(addr))
+	node.SetAlive()
+	s.AddNode(node)
+	return nil
+}
+
+func (s *SyncMember) RegisterMessageHandler(msgType MessageType, handler func(*Message)) {
+	if handler == nil {
+		s.logger.Error("RegisterMessageHandler handler is nil")
+		panic("RegisterMessageHandler handler is nil")
+	}
+	s.messageHandlers[msgType] = handler
+}
+
 func (s *SyncMember) PacketHandler(p *transport.Packet) {
+	start := time.Now()
 	var msg Message
 	err := codec.UDPUnmarshal(p.Buffer.Bytes(), &msg)
 	if err != nil {
@@ -97,13 +126,13 @@ func (s *SyncMember) PacketHandler(p *transport.Packet) {
 		return
 	}
 	s.logger.Debug("handle packet", "packet message", msg)
-	switch msg.MsgType {
-	case HeartBeat:
-		s.handleHeartbeat(&msg)
-	default:
-		s.logger.Error("unknown message type", "type", msg.MsgType)
+	handler, ok := s.messageHandlers[msg.MsgType]
+	if !ok {
+		s.logger.Error("no handler for message", "message type", msg.MsgType, "from", msg.From)
 		return
 	}
+	handler(&msg)
+	s.logger.Debug("handle packet done", "packet message type", msg.MsgType, "cost(ms)", float64(time.Since(start).Microseconds())/1000.0)
 }
 
 func (s *SyncMember) Run() error {

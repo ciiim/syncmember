@@ -1,25 +1,45 @@
 package syncmember
 
 import (
+	"bytes"
 	"math/rand"
 	"net"
 	"strconv"
 	"strings"
+
+	"github.com/ciiim/syncmember/codec"
+	"github.com/ciiim/syncmember/transport"
 )
 
-func kRamdonNodes(k int, nodes []*Node) []*Node {
-	if len(nodes) <= k {
-		return nodes
+func SendMsg(transport *transport.UDPTransport, msg IMessage) error {
+	b, err := codec.UDPMarshal(msg)
+	if err != nil {
+		return err
 	}
+	buf := bytes.NewBuffer(b)
+	return transport.SendRawMsg(buf, msg.BMessage().To.UDPAddr())
+}
+
+func kRamdonNodes(k int, nodes []*Node, exclude func(*Node) bool) []*Node {
 	cloneNodes := make([]*Node, len(nodes))
-	//FIXME: ADD MUTEX
 	copy(cloneNodes, nodes)
 	rand.Shuffle(len(cloneNodes), func(i, j int) {
 		cloneNodes[i], cloneNodes[j] = cloneNodes[j], cloneNodes[i]
 	})
 	pickedNodes := make([]*Node, 0, k)
+	if len(cloneNodes) < k {
+		k = len(cloneNodes)
+	}
+	pickedNums := 0
 	for i := 0; i < k; i++ {
+		if pickedNums >= k {
+			break
+		}
+		if exclude(cloneNodes[i]) {
+			continue
+		}
 		pickedNodes = append(pickedNodes, cloneNodes[i])
+		pickedNums++
 	}
 	return pickedNodes
 }

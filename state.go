@@ -3,7 +3,8 @@ package syncmember
 type NodeStateType uint8
 
 const (
-	NodeDead NodeStateType = iota
+	NodeUnknown NodeStateType = iota
+	NodeDead
 	NodeAlive
 	NodeTimeout
 )
@@ -13,5 +14,15 @@ func (n *Node) SetAlive() {
 		return
 	}
 	n.ChangeState(NodeAlive)
-	n.IncreaseVersionTo(1)
+	n.IncreaseVersionTo(n.GetInfo().Version + 1)
+	n.BecomeCredible()
+}
+
+func (n *Node) SetDead() {
+	if n.nodeLocalInfo.nodeState == NodeDead {
+		return
+	}
+	n.ChangeState(NodeDead)
+	n.IncreaseVersionTo(n.GetInfo().Version + 1)
+	n.nodeLocalInfo.credibility.Store(0)
 }

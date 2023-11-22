@@ -11,6 +11,11 @@ type Address struct {
 	Name string
 }
 
+func (a Address) WithName(name string) Address {
+	a.Name = name
+	return a
+}
+
 func (a Address) String() string {
 	return net.JoinHostPort(a.IP.String(), strconv.Itoa(a.Port))
 }

@@ -28,13 +28,24 @@ func (s *SyncMember) AddNode(node *Node) {
 }
 
 func NewNode(addr Address) *Node {
-	return &Node{
+	n := &Node{
 		address: addr,
 		nodeLocalInfo: NodeLocalInfo{
-			nodeState: NodeDead, //初始默认是死的
-			version:   atomic.Int64{},
+			nodeState:   NodeUnknown, //初始默认未知
+			version:     atomic.Int64{},
+			credibility: atomic.Int32{},
 		},
 	}
+	n.nodeLocalInfo.version.Store(0)
+	n.BecomeCredible()
+	return n
+}
+
+func (n *Node) BecomeCredible() {
+	if n.nodeLocalInfo.nodeState == NodeDead {
+		return
+	}
+	n.nodeLocalInfo.credibility.Store(3)
 }
 
 func (n *Node) IncreaseVersionTo(d int64) bool {
