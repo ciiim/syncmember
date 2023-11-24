@@ -16,10 +16,10 @@ var (
 	SlowHeartBeatInterval    = 1 * time.Second
 	DefaultHeartBeatInterval = NormalHeartBeatInterval
 
-	FastPullPushInterval    = 10 * time.Millisecond
-	NormalPullPushInterval  = 20 * time.Second
-	SlowPullPushInterval    = 30 * time.Second
-	DefaultPullPushInterval = NormalPullPushInterval
+	FastPushPullInterval    = 10 * time.Millisecond
+	NormalPushPullInterval  = 20 * time.Second
+	SlowPushPullInterval    = 30 * time.Second
+	DefaultPushPullInterval = NormalPushPullInterval
 
 	FastGossipInterval    = 300 * time.Millisecond
 	NormalGossipInterval  = 500 * time.Millisecond
@@ -27,14 +27,16 @@ var (
 	DefaultGossipInterval = NormalGossipInterval
 	///
 
-	DefaultTCPTimeout    = 5 * time.Second
+	//HeartBeat and Goosip
 	DefaultFanout        = 3
 	DefaultUDPBufferSize = 2048
+	DefaultPushPullNums  = 1
 
 	//Net
-	BindAllIP       = net.ParseIP("0.0.0.0")
-	BindLoopBackIP  = net.ParseIP("127.0.0.1")
-	DefaultBindPort = 9632
+	DefaultTCPTimeout = 5 * time.Second
+	BindAllIP         = net.ParseIP("0.0.0.0")
+	BindLoopBackIP    = net.ParseIP("127.0.0.1")
+	DefaultBindPort   = 9632
 
 	LocalAdvertiseIP     = net.ParseIP("127.0.0.1")
 	DefaultAdvertisePort = DefaultBindPort
@@ -55,7 +57,7 @@ type Config struct {
 	AdvertisePort int
 
 	HeartBeatInterval time.Duration
-	PullPushInterval  time.Duration
+	PushPullInterval  time.Duration
 
 	TCPTimeout time.Duration
 
@@ -63,7 +65,8 @@ type Config struct {
 	LogWriter io.Writer
 	LogDetail bool
 
-	Fanout int
+	Fanout       int
+	PushPullNums int
 
 	UDPBufferSize int
 }
@@ -77,7 +80,7 @@ var (
 			AdvertisePort: DefaultAdvertisePort,
 
 			HeartBeatInterval: DefaultHeartBeatInterval,
-			PullPushInterval:  DefaultPullPushInterval,
+			PushPullInterval:  DefaultPushPullInterval,
 
 			TCPTimeout: DefaultTCPTimeout,
 
@@ -99,7 +102,7 @@ var (
 		AdvertisePort: DefaultAdvertisePort,
 
 		HeartBeatInterval: DefaultHeartBeatInterval,
-		PullPushInterval:  DefaultPullPushInterval,
+		PushPullInterval:  DefaultPushPullInterval,
 
 		TCPTimeout: DefaultTCPTimeout,
 
@@ -107,7 +110,8 @@ var (
 		LogLevel:  slog.LevelDebug,
 		LogWriter: DefaultLogWriter,
 
-		Fanout: DefaultFanout,
+		Fanout:       DefaultFanout,
+		PushPullNums: DefaultPushPullNums,
 
 		UDPBufferSize: DefaultUDPBufferSize,
 	}
@@ -141,7 +145,7 @@ func (s *SyncMember) readConfig(config *Config) error {
 
 	s.logger = initLogger(config)
 	s.heartBeatTicker = time.NewTicker(config.HeartBeatInterval)
-	s.pullPushTicker = time.NewTicker(config.PullPushInterval)
+	s.pushPullTicker = time.NewTicker(config.PushPullInterval)
 
 	return nil
 }
@@ -167,8 +171,8 @@ func (c *Config) SetHeartBeatInterval(d time.Duration) *Config {
 	return c
 }
 
-func (c *Config) SetPullPushInterval(d time.Duration) *Config {
-	c.PullPushInterval = d
+func (c *Config) SetPushPullInterval(d time.Duration) *Config {
+	c.PushPullInterval = d
 	return c
 }
 

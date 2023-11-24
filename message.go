@@ -17,9 +17,9 @@ const (
 	Alive
 	Dead
 
-	KeyAdd
-	KeyRemove
-	KeyUpdate
+	KVSet
+	KVDelete
+	KVUpdate
 )
 
 type IMessage interface {
@@ -44,6 +44,10 @@ func (p *KeyValuePayload) Encode() *bytes.Buffer {
 		return nil
 	}
 	return bytes.NewBuffer(b)
+}
+
+func (p *KeyValuePayload) Decode(b []byte) error {
+	return codec.UDPUnmarshal(b, p)
 }
 
 func (m *Message) BMessage() *Message {

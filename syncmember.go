@@ -23,17 +23,22 @@ type SyncMember struct {
 	logger *slog.Logger
 
 	heartBeatTicker *time.Ticker
-	pullPushTicker  *time.Ticker
+	pushPullTicker  *time.Ticker
 
 	udpTransport *transport.UDPTransport
 
-	nMutex     *sync.Mutex
-	me         *Node
-	nodes      []*Node
-	nodesMap   map[string]*Node // key: ip:port
+	nMutex   *sync.Mutex
+	me       *Node
+	nodes    []*Node
+	nodesMap map[string]*Node // key: ip:port
+	//等待ACK的节点
 	waitAckMap map[string]*Node //key ip:port -> *Node
 
-	messageHandlers map[MessageType]func(*Message)
+	//副本
+	//存储用户数据
+	copyMap sync.Map //key -> value
+
+	messageHandlers map[MessageType]func(IMessage)
 
 	stopCh  chan struct{}
 	stopVar *atomic.Bool
@@ -51,7 +56,9 @@ func NewSyncMember(nodeName string, config *Config) *SyncMember {
 		nodesMap:   make(map[string]*Node),
 		waitAckMap: make(map[string]*Node),
 
-		messageHandlers: make(map[MessageType]func(*Message)),
+		copyMap: sync.Map{},
+
+		messageHandlers: make(map[MessageType]func(IMessage)),
 	}
 	err := s.init(config)
 	if err != nil {
@@ -97,6 +104,8 @@ func (s *SyncMember) Join(addr string) error {
 
 	node := NewNode(ResolveAddr(addr))
 	s.AddNode(node)
+	//完整拉取数据
+	//TODO
 	return nil
 }
 
@@ -109,7 +118,7 @@ func (s *SyncMember) JoinDebug(addr string) error {
 	return nil
 }
 
-func (s *SyncMember) RegisterMessageHandler(msgType MessageType, handler func(*Message)) {
+func (s *SyncMember) RegisterMessageHandler(msgType MessageType, handler func(IMessage)) {
 	if handler == nil {
 		s.logger.Error("RegisterMessageHandler handler is nil")
 		panic("RegisterMessageHandler handler is nil")
@@ -119,20 +128,20 @@ func (s *SyncMember) RegisterMessageHandler(msgType MessageType, handler func(*M
 
 func (s *SyncMember) PacketHandler(p *transport.Packet) {
 	start := time.Now()
-	var msg Message
-	err := codec.UDPUnmarshal(p.Buffer.Bytes(), &msg)
+	var msg IMessage
+	err := codec.UDPUnmarshal(p.Buffer.Bytes(), msg)
 	if err != nil {
 		s.logger.Error("UDPUnmarshal error", "error", err)
 		return
 	}
 	s.logger.Debug("handle packet", "packet message", msg)
-	handler, ok := s.messageHandlers[msg.MsgType]
+	handler, ok := s.messageHandlers[msg.BMessage().MsgType]
 	if !ok {
-		s.logger.Error("no handler for message", "message type", msg.MsgType, "from", msg.From)
+		s.logger.Error("no handler for message", "message type", msg.BMessage().MsgType, "from", msg.BMessage().From)
 		return
 	}
-	handler(&msg)
-	s.logger.Debug("handle packet done", "packet message type", msg.MsgType, "cost(ms)", float64(time.Since(start).Microseconds())/1000.0)
+	handler(msg)
+	s.logger.Debug("handle packet done", "packet message type", msg.BMessage().MsgType, "cost(ms)", float64(time.Since(start).Microseconds())/1000.0)
 }
 
 func (s *SyncMember) Run() error {
@@ -163,5 +172,5 @@ func (s *SyncMember) waitShutdown() {
 func (s *SyncMember) stop() {
 	s.stopVar.Store(true)
 	s.heartBeatTicker.Stop()
-	s.pullPushTicker.Stop()
+	s.pushPullTicker.Stop()
 }

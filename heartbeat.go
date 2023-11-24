@@ -20,10 +20,7 @@ func (s *SyncMember) doHeartBeat() {
 		return
 	}
 	nodes := kRamdonNodes(s.config.Fanout, s.nodes, func(n *Node) bool {
-		if n.nodeLocalInfo.nodeState == NodeDead {
-			return true
-		}
-		return false
+		return !n.IsCredible()
 	})
 	for _, node := range nodes {
 		msg := NewHeartBeatMessage(s.host, node.Addr())
@@ -39,6 +36,7 @@ func (s *SyncMember) clearwaitAckMap() {
 	for k, node := range s.waitAckMap {
 		if node.nodeLocalInfo.credibility.Load()-1 == 0 {
 			s.logger.Debug("[Heartbeat]credibility is zero", "dead node", node.Addr())
+
 			node.SetDead()
 			delete(s.waitAckMap, k)
 		} else {
@@ -47,11 +45,11 @@ func (s *SyncMember) clearwaitAckMap() {
 	}
 }
 
-func (s *SyncMember) handleAckHeartbeat(msg *Message) {
-	s.logger.Info("AckHeartbeat", "health node", msg.From)
+func (s *SyncMember) handleAckHeartbeat(msg IMessage) {
+	s.logger.Info("AckHeartbeat", "health node", msg.BMessage().From)
 	s.nMutex.Lock()
 	defer s.nMutex.Unlock()
-	from := msg.From.String()
+	from := msg.BMessage().From.String()
 
 	//如果一段时间后才收到ACK，且节点为死亡状态，转变为存活节点
 	node, ok := s.nodesMap[from]
@@ -61,7 +59,7 @@ func (s *SyncMember) handleAckHeartbeat(msg *Message) {
 		return
 	}
 	if !ok {
-		s.logger.Warn("Unknown AckHeartbeat Message", "From", msg.From)
+		s.logger.Warn("Unknown AckHeartbeat Message", "From", msg.BMessage().From)
 		return
 	}
 
@@ -76,18 +74,18 @@ func (s *SyncMember) handleAckHeartbeat(msg *Message) {
 }
 
 // 由PacketHandler触发
-func (s *SyncMember) handleHeartbeat(msg *Message) {
+func (s *SyncMember) handleHeartbeat(msg IMessage) {
 	s.nMutex.Lock()
-	_, ok := s.nodesMap[msg.From.String()]
+	_, ok := s.nodesMap[msg.BMessage().From.String()]
 	s.nMutex.Unlock()
 	if !ok {
-		s.logger.Warn("Received an unknown Heartbeat", "node addr", msg.From)
-		node := NewNode(msg.From)
-		node.SetAlive()
+		s.logger.Warn("Received an unknown Heartbeat", "node addr", msg.BMessage().From)
+		node := NewNode(msg.BMessage().From)
 		s.AddNode(node)
+		alive(node, msg)
 	} else {
 		//创建一个Ack消息
-		ackMsg := NewHeartBeatAckMessage(s.host, msg.From)
+		ackMsg := NewHeartBeatAckMessage(s.host, msg.BMessage().From)
 		if err := SendMsg(s.udpTransport, ackMsg); err != nil {
 			s.logger.Error("SendMsg", "error", err)
 		}

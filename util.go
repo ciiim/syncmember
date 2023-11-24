@@ -60,9 +60,15 @@ func ResolveAddr(addr string) Address {
 			Port: portInt,
 		}
 	}
+	ips, err := net.LookupIP(addr)
+	if err != nil {
+		return Address{}
+	}
+	//只取第一个
+	ip := ips[0]
 	return Address{
-		IP:   ResolveIP(addr),
-		Port: 0,
+		IP: ip,
+		// FIXME:暂时没有解决方案-Port
 	}
 }
 

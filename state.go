@@ -6,23 +6,16 @@ const (
 	NodeUnknown NodeStateType = iota
 	NodeDead
 	NodeAlive
-	NodeTimeout
 )
 
-func (n *Node) SetAlive() {
-	if n.nodeLocalInfo.nodeState == NodeAlive {
-		return
-	}
-	n.ChangeState(NodeAlive)
-	n.IncreaseVersionTo(n.GetInfo().Version + 1)
-	n.BecomeCredible()
+// 由远程节点发起的状态变更触发
+// 也可以由心跳判断的状态变更触发
+func alive(n *Node, m IMessage) {
+	n.SetAlive()
 }
 
-func (n *Node) SetDead() {
-	if n.nodeLocalInfo.nodeState == NodeDead {
-		return
-	}
-	n.ChangeState(NodeDead)
-	n.IncreaseVersionTo(n.GetInfo().Version + 1)
-	n.nodeLocalInfo.credibility.Store(0)
+// 由远程节点发起的状态变更触发
+// 也可以由心跳判断的状态变更触发
+func dead(n *Node, m IMessage) {
+	n.SetDead()
 }
