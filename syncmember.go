@@ -22,9 +22,9 @@ type SyncMember struct {
 
 	logger *slog.Logger
 
-	heartBeatTicker *time.Ticker
-	pushPullTicker  *time.Ticker
-	gossipTicker    *time.Ticker
+	pingTicker     *time.Ticker
+	pushPullTicker *time.Ticker
+	gossipTicker   *time.Ticker
 
 	udpTransport *transport.UDPTransport
 	tcpTransport *transport.TCPTransport
@@ -33,8 +33,8 @@ type SyncMember struct {
 	me       *Node
 	nodes    []*Node
 	nodesMap map[string]*Node // ip:port -> *Node
-	//等待ACK的节点
-	waitAckMap map[string]*Node //ip:port -> *Node
+	//等待Pong的节点
+	waitPongMap map[string]*Node //ip:port -> *Node
 
 	//副本
 	//存储用户数据
@@ -53,10 +53,10 @@ func NewSyncMember(nodeName string, config *Config) *SyncMember {
 		stopCh:   make(chan struct{}, 2),
 		stopVar:  new(atomic.Bool),
 
-		nMutex:     new(sync.Mutex),
-		nodes:      make([]*Node, 0),
-		nodesMap:   make(map[string]*Node),
-		waitAckMap: make(map[string]*Node),
+		nMutex:      new(sync.Mutex),
+		nodes:       make([]*Node, 0),
+		nodesMap:    make(map[string]*Node),
+		waitPongMap: make(map[string]*Node),
 
 		kvcopyMap: sync.Map{},
 
@@ -103,8 +103,8 @@ func (s *SyncMember) init(config *Config) error {
 	s.udpTransport = transport.NewUDPTransport(&udpConfig, s.stopVar)
 	s.tcpTransport = transport.NewTCPTransport(&tcpConfig, s.stopVar, s.handlepushPull)
 
-	s.RegisterMessageHandler(HeartBeat, s.handleHeartbeat)
-	s.RegisterMessageHandler(HeartBeatAck, s.handleAckHeartbeat)
+	s.RegisterMessageHandler(Ping, s.handlePing)
+	s.RegisterMessageHandler(Pong, s.handlePong)
 
 	//UDP service
 	go s.udpTransport.Handle()
@@ -120,7 +120,7 @@ func (s *SyncMember) init(config *Config) error {
 
 func (s *SyncMember) Run() error {
 
-	go s.heartBeat()
+	go s.ping()
 	go s.pushPull()
 	go s.gossip()
 
@@ -196,6 +196,7 @@ func (s *SyncMember) waitShutdown() {
 
 func (s *SyncMember) stop() {
 	s.stopVar.Store(true)
-	s.heartBeatTicker.Stop()
+	s.pingTicker.Stop()
 	s.pushPullTicker.Stop()
+	s.gossipTicker.Stop()
 }

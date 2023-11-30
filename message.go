@@ -9,8 +9,8 @@ import (
 type MessageType int8
 
 const (
-	HeartBeat MessageType = iota
-	HeartBeatAck
+	Ping MessageType = iota
+	Pong
 
 	Alive
 	Dead
@@ -22,6 +22,7 @@ const (
 
 type Message struct {
 	MsgType MessageType
+	Seq     uint64
 	From    Address
 	To      Address
 	Payload *bytes.Buffer
@@ -48,18 +49,38 @@ func (m *Message) GetPayload() *bytes.Buffer {
 	return nil
 }
 
-func NewHeartBeatMessage(from, to Address) *Message {
+func NewPingMessage(from, to Address) *Message {
 	return &Message{
-		MsgType: HeartBeat,
+		MsgType: Ping,
+		Seq:     randSeq(),
 		From:    from,
 		To:      to,
 		Payload: nil,
 	}
 }
 
-func NewHeartBeatAckMessage(from, to Address) *Message {
+func NewPongMessage(from, to Address, seq uint64) *Message {
 	return &Message{
-		MsgType: HeartBeatAck,
+		MsgType: Pong,
+		Seq:     seq + 1,
+		From:    from,
+		To:      to,
+		Payload: nil,
+	}
+}
+
+func NewAliveMessage(from, to Address) *Message {
+	return &Message{
+		MsgType: Alive,
+		From:    from,
+		To:      to,
+		Payload: nil,
+	}
+}
+
+func NewDeadMessage(from, to Address) *Message {
+	return &Message{
+		MsgType: Dead,
 		From:    from,
 		To:      to,
 		Payload: nil,

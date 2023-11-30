@@ -90,3 +90,7 @@ func GetHostIP() net.IP {
 	}
 	return nil
 }
+
+func randSeq() uint64 {
+	return rand.Uint64()
+}

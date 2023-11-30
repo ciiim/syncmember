@@ -11,10 +11,10 @@ import (
 
 var (
 	//Interval
-	FastHeartBeatInterval    = 300 * time.Millisecond
-	NormalHeartBeatInterval  = 500 * time.Millisecond
-	SlowHeartBeatInterval    = 1 * time.Second
-	DefaultHeartBeatInterval = NormalHeartBeatInterval
+	FastPingInterval    = 300 * time.Millisecond
+	NormalPingInterval  = 500 * time.Millisecond
+	SlowPingInterval    = 1 * time.Second
+	DefaultPingInterval = NormalPingInterval
 
 	FastPushPullInterval    = 10 * time.Millisecond
 	NormalPushPullInterval  = 20 * time.Second
@@ -27,7 +27,7 @@ var (
 	DefaultGossipInterval = NormalGossipInterval
 	///
 
-	//HeartBeat and Goosip
+	//Ping and Goosip
 	DefaultFanout        = 3
 	DefaultUDPBufferSize = 2048
 	DefaultPushPullNums  = 1
@@ -56,9 +56,9 @@ type Config struct {
 	AdvertiseIP   net.IP
 	AdvertisePort int
 
-	HeartBeatInterval time.Duration
-	PushPullInterval  time.Duration
-	GossipInterval    time.Duration
+	PingInterval     time.Duration
+	PushPullInterval time.Duration
+	GossipInterval   time.Duration
 
 	TCPTimeout time.Duration
 
@@ -80,9 +80,9 @@ var (
 
 			AdvertisePort: DefaultAdvertisePort,
 
-			HeartBeatInterval: DefaultHeartBeatInterval,
-			PushPullInterval:  DefaultPushPullInterval,
-			GossipInterval:    DefaultGossipInterval,
+			PingInterval:     DefaultPingInterval,
+			PushPullInterval: DefaultPushPullInterval,
+			GossipInterval:   DefaultGossipInterval,
 
 			TCPTimeout: DefaultTCPTimeout,
 
@@ -104,9 +104,9 @@ var (
 
 			AdvertisePort: DefaultAdvertisePort,
 
-			HeartBeatInterval: DefaultHeartBeatInterval,
-			PushPullInterval:  FastPushPullInterval,
-			GossipInterval:    DefaultGossipInterval,
+			PingInterval:     DefaultPingInterval,
+			PushPullInterval: FastPushPullInterval,
+			GossipInterval:   DefaultGossipInterval,
 
 			TCPTimeout: DefaultTCPTimeout,
 
@@ -149,7 +149,7 @@ func (s *SyncMember) readConfig(config *Config) error {
 	s.host = ResolveAddr(fmt.Sprintf("%s:%d", config.AdvertiseIP.String(), config.AdvertisePort))
 
 	s.logger = initLogger(config)
-	s.heartBeatTicker = time.NewTicker(config.HeartBeatInterval)
+	s.pingTicker = time.NewTicker(config.PingInterval)
 	s.pushPullTicker = time.NewTicker(config.PushPullInterval)
 	s.gossipTicker = time.NewTicker(config.GossipInterval)
 
@@ -172,8 +172,8 @@ func (c *Config) SetBindIP(ip string) *Config {
 	return c
 }
 
-func (c *Config) SetHeartBeatInterval(d time.Duration) *Config {
-	c.HeartBeatInterval = d
+func (c *Config) SetPingInterval(d time.Duration) *Config {
+	c.PingInterval = d
 	return c
 }
 
