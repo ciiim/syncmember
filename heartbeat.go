@@ -15,7 +15,7 @@ func (s *SyncMember) doHeartBeat() {
 	s.clearwaitAckMap()
 	s.nMutex.Lock()
 	defer s.nMutex.Unlock()
-	s.logger.Debug("HeartBeat", "node number", len(s.nodes))
+	s.logger.Debug("HeartBeat", "node list length", len(s.nodes))
 	if len(s.nodes) == 0 {
 		return
 	}
@@ -28,15 +28,15 @@ func (s *SyncMember) doHeartBeat() {
 			s.logger.Error("SendMsg", "error", err)
 		}
 		s.waitAckMap[node.address.String()] = node
-		s.logger.Info("HeartBeat", "target node", node.Addr())
+		s.logger.Debug("HeartBeat", "target node", node.Addr())
 	}
 }
 
 func (s *SyncMember) clearwaitAckMap() {
 	for k, node := range s.waitAckMap {
-		if node.nodeLocalInfo.credibility.Load()-1 == 0 {
+		if node.nodeLocalInfo.credibility.Load()-1 <= 0 {
 			s.logger.Debug("[Heartbeat]credibility is zero", "dead node", node.Addr())
-
+			s.logger.Info("Dead Node", "node", node.Addr())
 			node.SetDead()
 			delete(s.waitAckMap, k)
 		} else {
@@ -45,11 +45,11 @@ func (s *SyncMember) clearwaitAckMap() {
 	}
 }
 
-func (s *SyncMember) handleAckHeartbeat(msg IMessage) {
-	s.logger.Info("AckHeartbeat", "health node", msg.BMessage().From)
+func (s *SyncMember) handleAckHeartbeat(msg *Message) {
+	s.logger.Debug("AckHeartbeat", "health node", msg.From)
 	s.nMutex.Lock()
 	defer s.nMutex.Unlock()
-	from := msg.BMessage().From.String()
+	from := msg.From.String()
 
 	//如果一段时间后才收到ACK，且节点为死亡状态，转变为存活节点
 	node, ok := s.nodesMap[from]
@@ -59,14 +59,14 @@ func (s *SyncMember) handleAckHeartbeat(msg IMessage) {
 		return
 	}
 	if !ok {
-		s.logger.Warn("Unknown AckHeartbeat Message", "From", msg.BMessage().From)
+		s.logger.Warn("Unknown AckHeartbeat Message", "From", msg.From)
 		return
 	}
 
 	//如果收到ACK，且节点为存活状态，增加可信度
 	node, ok = s.waitAckMap[from]
 	if !ok {
-		// s.logger.Warn("Unknown AckHeartbeat Message", "From", msg.From)
+		s.logger.Warn("Unknown HeartbeatAck Message", "From", msg.From)
 		return
 	}
 	node.BecomeCredible()
@@ -74,18 +74,15 @@ func (s *SyncMember) handleAckHeartbeat(msg IMessage) {
 }
 
 // 由PacketHandler触发
-func (s *SyncMember) handleHeartbeat(msg IMessage) {
+func (s *SyncMember) handleHeartbeat(msg *Message) {
 	s.nMutex.Lock()
-	_, ok := s.nodesMap[msg.BMessage().From.String()]
+	_, ok := s.nodesMap[msg.From.String()]
 	s.nMutex.Unlock()
 	if !ok {
-		s.logger.Warn("Received an unknown Heartbeat", "node addr", msg.BMessage().From)
-		node := NewNode(msg.BMessage().From)
-		s.AddNode(node)
-		alive(node, msg)
+		s.logger.Warn("Received an unknown Heartbeat", "node addr", msg.From)
 	} else {
 		//创建一个Ack消息
-		ackMsg := NewHeartBeatAckMessage(s.host, msg.BMessage().From)
+		ackMsg := NewHeartBeatAckMessage(s.host, msg.From)
 		if err := SendMsg(s.udpTransport, ackMsg); err != nil {
 			s.logger.Error("SendMsg", "error", err)
 		}

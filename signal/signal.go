@@ -33,7 +33,6 @@ func NewManager() *SignalManager {
 	s := &SignalManager{
 		sigs: make(map[os.Signal]*Signal),
 	}
-	//s.AddWatcher(os.Interrupt, "default", InterruptSignalFunc)
 	return s
 }
 
@@ -48,6 +47,8 @@ func (s *SignalManager) Wait() {
 			go sh()
 		}
 	}
+	s.AddWatcher(os.Interrupt, "_internal_", InterruptSignalFunc)
+	s.sigs[os.Interrupt].handlers["_internal_"]()
 }
 
 // SignalHandlerFunc -> func()

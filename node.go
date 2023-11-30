@@ -11,8 +11,10 @@ type NodeLocalInfo struct {
 }
 
 type NodeInfo struct {
+	Addr      Address
 	NodeState NodeStateType
 	Version   int64
+	TTL       int8
 }
 
 type Node struct {
@@ -23,11 +25,15 @@ type Node struct {
 func (s *SyncMember) AddNode(node *Node) {
 	s.nMutex.Lock()
 	defer s.nMutex.Unlock()
+	if _, ok := s.nodesMap[node.Addr().String()]; ok {
+		s.logger.Warn("node already exist", "node", node.Addr())
+		return
+	}
 	s.nodes = append(s.nodes, node)
 	s.nodesMap[node.Addr().String()] = node
 }
 
-func NewNode(addr Address) *Node {
+func NewNode(addr Address, nodeInfo *NodeInfo) *Node {
 	n := &Node{
 		address: addr,
 		nodeLocalInfo: NodeLocalInfo{
@@ -36,11 +42,23 @@ func NewNode(addr Address) *Node {
 			credibility: atomic.Int32{},
 		},
 	}
-	n.nodeLocalInfo.version.Store(0)
-	n.BecomeCredible()
+	if nodeInfo == nil {
+		return n
+	} else {
+		n = &Node{
+			address: addr,
+			nodeLocalInfo: NodeLocalInfo{
+				nodeState:   nodeInfo.NodeState,
+				version:     atomic.Int64{},
+				credibility: atomic.Int32{},
+			},
+		}
+		n.nodeLocalInfo.version.Store(nodeInfo.Version)
+	}
 	return n
 }
 
+// 改变节点状态，重置节点可信度，增加版本号
 func (n *Node) SetAlive() {
 	if n.nodeLocalInfo.nodeState == NodeAlive {
 		return
@@ -50,6 +68,7 @@ func (n *Node) SetAlive() {
 	n.BecomeCredible()
 }
 
+// 改变节点状态，重置节点可信度，增加版本号
 func (n *Node) SetDead() {
 	if n.nodeLocalInfo.nodeState == NodeDead {
 		return
@@ -60,16 +79,10 @@ func (n *Node) SetDead() {
 }
 
 func (n *Node) BecomeUnCredible() {
-	if n.nodeLocalInfo.nodeState == NodeDead {
-		return
-	}
 	n.nodeLocalInfo.credibility.Store(0)
 }
 
 func (n *Node) BecomeCredible() {
-	if n.nodeLocalInfo.nodeState == NodeDead {
-		return
-	}
 	n.nodeLocalInfo.credibility.Store(3)
 }
 
@@ -99,7 +112,12 @@ func (n *Node) Addr() Address {
 
 func (n *Node) GetInfo() NodeInfo {
 	return NodeInfo{
+		Addr:      n.address,
 		NodeState: n.nodeLocalInfo.nodeState,
 		Version:   n.nodeLocalInfo.version.Load(),
 	}
+}
+
+func (ni *NodeInfo) SetTTL(ttl int8) {
+	ni.TTL = ttl
 }

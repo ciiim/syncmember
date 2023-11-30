@@ -11,13 +11,17 @@ import (
 	"github.com/ciiim/syncmember/transport"
 )
 
-func SendMsg(transport *transport.UDPTransport, msg IMessage) error {
+func SendMsg(transport *transport.UDPTransport, msg *Message) error {
 	b, err := codec.UDPMarshal(msg)
 	if err != nil {
 		return err
 	}
 	buf := bytes.NewBuffer(b)
-	return transport.SendRawMsg(buf, msg.BMessage().To.UDPAddr())
+	return transport.SendRawMsg(buf, msg.To.UDPAddr())
+}
+
+func EqualAddress(a, b Address) bool {
+	return a.IP.Equal(b.IP) && a.Port == b.Port
 }
 
 func kRamdonNodes(k int, nodes []*Node, exclude func(*Node) bool) []*Node {

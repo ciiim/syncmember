@@ -58,6 +58,7 @@ type Config struct {
 
 	HeartBeatInterval time.Duration
 	PushPullInterval  time.Duration
+	GossipInterval    time.Duration
 
 	TCPTimeout time.Duration
 
@@ -81,6 +82,7 @@ var (
 
 			HeartBeatInterval: DefaultHeartBeatInterval,
 			PushPullInterval:  DefaultPushPullInterval,
+			GossipInterval:    DefaultGossipInterval,
 
 			TCPTimeout: DefaultTCPTimeout,
 
@@ -95,25 +97,28 @@ var (
 
 	}
 
-	DebugConfig = &Config{
-		BindIP:   BindAllIP,
-		BindPort: DefaultBindPort,
+	DebugConfig = func() *Config {
+		return &Config{
+			BindIP:   BindAllIP,
+			BindPort: DefaultBindPort,
 
-		AdvertisePort: DefaultAdvertisePort,
+			AdvertisePort: DefaultAdvertisePort,
 
-		HeartBeatInterval: DefaultHeartBeatInterval,
-		PushPullInterval:  DefaultPushPullInterval,
+			HeartBeatInterval: DefaultHeartBeatInterval,
+			PushPullInterval:  FastPushPullInterval,
+			GossipInterval:    DefaultGossipInterval,
 
-		TCPTimeout: DefaultTCPTimeout,
+			TCPTimeout: DefaultTCPTimeout,
 
-		LogDetail: OpenLogDetail,
-		LogLevel:  slog.LevelDebug,
-		LogWriter: DefaultLogWriter,
+			LogDetail: OpenLogDetail,
+			LogLevel:  slog.LevelDebug,
+			LogWriter: DefaultLogWriter,
 
-		Fanout:       DefaultFanout,
-		PushPullNums: DefaultPushPullNums,
+			Fanout:       DefaultFanout,
+			PushPullNums: DefaultPushPullNums,
 
-		UDPBufferSize: DefaultUDPBufferSize,
+			UDPBufferSize: DefaultUDPBufferSize,
+		}
 	}
 )
 
@@ -146,6 +151,7 @@ func (s *SyncMember) readConfig(config *Config) error {
 	s.logger = initLogger(config)
 	s.heartBeatTicker = time.NewTicker(config.HeartBeatInterval)
 	s.pushPullTicker = time.NewTicker(config.PushPullInterval)
+	s.gossipTicker = time.NewTicker(config.GossipInterval)
 
 	return nil
 }
@@ -173,6 +179,11 @@ func (c *Config) SetHeartBeatInterval(d time.Duration) *Config {
 
 func (c *Config) SetPushPullInterval(d time.Duration) *Config {
 	c.PushPullInterval = d
+	return c
+}
+
+func (c *Config) SetGossipInterval(d time.Duration) *Config {
+	c.GossipInterval = d
 	return c
 }
 

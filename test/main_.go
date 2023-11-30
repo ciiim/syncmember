@@ -3,6 +3,7 @@ package main
 import (
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/ciiim/syncmember"
 	"github.com/ciiim/syncmember/signal"
@@ -10,14 +11,21 @@ import (
 
 func main() {
 	si := signal.NewManager()
-	s1 := syncmember.NewSyncMember("node1", syncmember.DebugConfig.SetPort(9000).SetLogLevel(slog.LevelInfo).OpenLogDetail(false))
-	s2 := syncmember.NewSyncMember("node2", syncmember.DebugConfig.SetPort(9001).SetLogLevel(slog.LevelInfo).OpenLogDetail(false))
+	s1 := syncmember.NewSyncMember("node1", syncmember.DebugConfig().SetPort(9000).SetLogLevel(slog.LevelInfo).OpenLogDetail(false))
+	s2 := syncmember.NewSyncMember("node2", syncmember.DebugConfig().SetPort(9001).SetLogLevel(slog.LevelInfo).OpenLogDetail(false))
+	s3 := syncmember.NewSyncMember("node3", syncmember.DebugConfig().SetPort(9002).SetLogLevel(slog.LevelInfo).OpenLogDetail(false))
 	si.AddWatcher(os.Interrupt, "shutdown", func() {
 		s2.Shutdown()
 		s1.Shutdown()
+		s3.Shutdown()
 	})
-	go si.Wait()
 	go s1.Run()
-	s2.JoinDebug("172.26.123.188:9000")
-	s2.Run()
+	go s2.Run()
+	go s3.Run()
+	time.Sleep(time.Second * 3)
+	s1.Join("172.26.123.188:9001")
+	time.Sleep(time.Second * 1)
+
+	s2.Join("172.26.123.188:9002")
+	si.Wait()
 }

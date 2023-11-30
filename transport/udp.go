@@ -81,10 +81,6 @@ func ResolveUDPAddr(addr string) (*net.UDPAddr, error) {
 }
 
 func listenUDP(addr *net.UDPAddr) (*net.UDPConn, error) {
-	// udpAddr, err := net.ResolveUDPAddr("udp", addr)
-	// if err != nil {
-	// 	return nil, err
-	// }
 	return net.ListenUDP("udp", addr)
 }
 
@@ -95,7 +91,7 @@ func (u *UDPTransport) buildPacket(from *net.UDPAddr, buffer []byte) *Packet {
 	return packet
 }
 
-func (u *UDPTransport) UDPListen() {
+func (u *UDPTransport) Listen() {
 	var err error
 	u.conn, err = listenUDP(u.config.ListenAddr)
 	if err != nil {
@@ -123,7 +119,7 @@ func (u *UDPTransport) UDPListen() {
 	}
 }
 
-func (u *UDPTransport) UDPHandler() {
+func (u *UDPTransport) Handle() {
 	for {
 		packet, ok := <-u.packet()
 		if !ok {
