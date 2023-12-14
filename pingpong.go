@@ -23,8 +23,8 @@ func (s *SyncMember) doPing() {
 		return !n.IsCredible()
 	})
 	for _, node := range nodes {
-		msg := NewPingMessage(s.host, node.Addr())
-		if err := SendMsg(s.udpTransport, msg); err != nil {
+		packet := NewPacket(NewPingMessage(), s.host, node.Addr())
+		if err := SendPacket(s.udpTransport, packet); err != nil {
 			s.logger.Error("SendMsg", "error", err)
 		}
 		s.waitPongMap[node.address.String()] = node
@@ -45,11 +45,11 @@ func (s *SyncMember) clearwaitPongMap() {
 	}
 }
 
-func (s *SyncMember) handlePong(msg *Message) {
-	s.logger.Debug("PongPing", "health node", msg.From)
+func (s *SyncMember) handlePong(packet *Packet) {
+	s.logger.Debug("PongPing", "health node", packet.From)
 	s.nMutex.Lock()
 	defer s.nMutex.Unlock()
-	from := msg.From.String()
+	from := packet.From.String()
 
 	//如果一段时间后才收到Pong，且节点为死亡状态，转变为存活节点
 	node, ok := s.nodesMap[from]
@@ -59,14 +59,14 @@ func (s *SyncMember) handlePong(msg *Message) {
 		return
 	}
 	if !ok {
-		s.logger.Warn("Unknown Pong Message", "From", msg.From)
+		s.logger.Warn("Unknown Pong Message", "From", packet.From)
 		return
 	}
 
 	//如果收到Pong，且节点为存活状态，增加可信度
 	node, ok = s.waitPongMap[from]
 	if !ok {
-		s.logger.Warn("Unknown Pong Message", "From", msg.From)
+		s.logger.Warn("Unknown Pong Message", "From", packet.From)
 		return
 	}
 	node.BecomeCredible()
@@ -74,16 +74,16 @@ func (s *SyncMember) handlePong(msg *Message) {
 }
 
 // 由PongHandler触发
-func (s *SyncMember) handlePing(msg *Message) {
+func (s *SyncMember) handlePing(packet *Packet) {
 	s.nMutex.Lock()
-	_, ok := s.nodesMap[msg.From.String()]
+	_, ok := s.nodesMap[packet.From.String()]
 	s.nMutex.Unlock()
 	if !ok {
-		s.logger.Warn("Received an unknown Ping", "node addr", msg.From)
+		s.logger.Warn("Received an unknown Ping", "node addr", packet.From)
 	} else {
 		//创建一个Pong消息
-		PongMsg := NewPongMessage(s.host, msg.From, msg.Seq)
-		if err := SendMsg(s.udpTransport, PongMsg); err != nil {
+		PongPacket := NewPacket(NewPongMessage(packet.MessageBody.Seq), s.host, packet.From)
+		if err := SendPacket(s.udpTransport, PongPacket); err != nil {
 			s.logger.Error("SendMsg", "error", err)
 		}
 	}

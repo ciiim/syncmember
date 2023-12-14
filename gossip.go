@@ -14,22 +14,25 @@ func (s *SyncMember) gossip() {
 }
 
 func (s *SyncMember) doGossip() {
+	//取出Boardcast
+	availableBytes := s.config.UDPBufferSize
+	s.boardcastQueue.GetGossipBoardcast(availableBytes)
 
 }
 
-func (s *SyncMember) handleGossip(msg *Message) {
+func (s *SyncMember) handleGossip(packet *Packet) {
 
-	switch msg.MsgType {
+	switch packet.MessageBody.MsgType {
 	case Alive:
 		fallthrough
 	case Dead:
-		s.handleStateChange(msg)
+		s.handleStateChange(packet.MessageBody)
 	case KVSet:
 		fallthrough
 	case KVDelete:
 		fallthrough
 	case KVUpdate:
-		s.handleKV(msg)
+		s.handleKV(packet.MessageBody)
 	}
 }
 

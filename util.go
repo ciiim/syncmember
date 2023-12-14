@@ -11,13 +11,13 @@ import (
 	"github.com/ciiim/syncmember/transport"
 )
 
-func SendMsg(transport *transport.UDPTransport, msg *Message) error {
-	b, err := codec.UDPMarshal(msg)
+func SendPacket(transport *transport.UDPTransport, packet *Packet) error {
+	b, err := codec.UDPMarshal(packet)
 	if err != nil {
 		return err
 	}
 	buf := bytes.NewBuffer(b)
-	return transport.SendRawMsg(buf, msg.To.UDPAddr())
+	return transport.SendRaw(buf, packet.To.UDPAddr())
 }
 
 func EqualAddress(a, b Address) bool {

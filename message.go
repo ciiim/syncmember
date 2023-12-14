@@ -23,8 +23,6 @@ const (
 type Message struct {
 	MsgType MessageType
 	Seq     uint64 //FIXME: 暂时不起作用
-	From    Address
-	To      Address
 	Payload []byte
 }
 
@@ -67,22 +65,20 @@ func (m *Message) GetPayload() *bytes.Buffer {
 	return nil
 }
 
-func NewPingMessage(from, to Address) *Message {
+func NewPingMessage() *Message {
 	return &Message{
 		MsgType: Ping,
 		Seq:     randSeq(),
-		From:    from,
-		To:      to,
+
 		Payload: nil,
 	}
 }
 
-func NewPongMessage(from, to Address, seq uint64) *Message {
+func NewPongMessage(seq uint64) *Message {
 	return &Message{
 		MsgType: Pong,
 		Seq:     seq + 1,
-		From:    from,
-		To:      to,
+
 		Payload: nil,
 	}
 }
@@ -90,8 +86,6 @@ func NewPongMessage(from, to Address, seq uint64) *Message {
 func NewAliveMessage(from, to Address, payload []byte) *Message {
 	return &Message{
 		MsgType: Alive,
-		From:    from,
-		To:      to,
 		Payload: payload,
 	}
 }
@@ -99,8 +93,6 @@ func NewAliveMessage(from, to Address, payload []byte) *Message {
 func NewDeadMessage(from, to Address, payload []byte) *Message {
 	return &Message{
 		MsgType: Dead,
-		From:    from,
-		To:      to,
 		Payload: payload,
 	}
 }

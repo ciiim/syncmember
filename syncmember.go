@@ -42,7 +42,7 @@ type SyncMember struct {
 	//存储用户数据
 	kvcopyMap sync.Map //key -> value
 
-	messageHandlers map[MessageType]func(*Message)
+	messageHandlers map[MessageType]PacketHandlerFunc
 
 	stopCh  chan struct{}
 	stopVar *atomic.Bool
@@ -63,7 +63,7 @@ func NewSyncMember(nodeName string, config *Config) *SyncMember {
 
 		kvcopyMap: sync.Map{},
 
-		messageHandlers: make(map[MessageType]func(*Message)),
+		messageHandlers: make(map[MessageType]PacketHandlerFunc),
 	}
 	err := s.init(config)
 	if err != nil {
@@ -168,7 +168,7 @@ func (s *SyncMember) JoinDebug(addr string) error {
 	return nil
 }
 
-func (s *SyncMember) RegisterMessageHandler(msgType MessageType, handler func(*Message)) {
+func (s *SyncMember) RegisterMessageHandler(msgType MessageType, handler PacketHandlerFunc) {
 	if handler == nil {
 		s.logger.Error("RegisterMessageHandler handler is nil")
 		panic("RegisterMessageHandler handler is nil")
@@ -178,20 +178,20 @@ func (s *SyncMember) RegisterMessageHandler(msgType MessageType, handler func(*M
 
 func (s *SyncMember) PacketHandler(p *transport.Packet) {
 	start := time.Now()
-	var msg Message
-	err := codec.UDPUnmarshal(p.Buffer.Bytes(), &msg)
+	var packet Packet
+	err := codec.UDPUnmarshal(p.Buffer.Bytes(), &packet)
 	if err != nil {
 		s.logger.Error("UDPUnmarshal error", "error", err)
 		return
 	}
-	s.logger.Debug("handle packet", "packet message", msg)
-	handler, ok := s.messageHandlers[msg.MsgType]
+	s.logger.Debug("handle packet", "packet message", packet.MessageBody.MsgType)
+	handler, ok := s.messageHandlers[packet.MessageBody.MsgType]
 	if !ok {
-		s.logger.Error("no handler for message", "message type", msg.MsgType, "from", msg.From)
+		s.logger.Error("no handler for packet", "message type", packet.MessageBody.MsgType, "from", packet.From)
 		return
 	}
-	handler(&msg)
-	s.logger.Debug("handle packet done", "packet message type", msg.MsgType, "cost(ms)", float64(time.Since(start).Microseconds())/1000.0)
+	handler(&packet)
+	s.logger.Debug("handle packet done", "packet message type", packet.MessageBody.MsgType, "cost(ms)", float64(time.Since(start).Microseconds())/1000.0)
 }
 
 func (s *SyncMember) Shutdown() {
