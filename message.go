@@ -22,10 +22,28 @@ const (
 
 type Message struct {
 	MsgType MessageType
-	Seq     uint64
+	Seq     uint64 //FIXME: 暂时不起作用
 	From    Address
 	To      Address
-	Payload *bytes.Buffer
+	Payload []byte
+}
+
+type NodeInfoPayload struct {
+	Addr      Address
+	NodeState NodeStateType
+	Version   int64
+}
+
+func (p *NodeInfoPayload) Encode() *bytes.Buffer {
+	b, err := codec.UDPMarshal(p)
+	if err != nil {
+		return nil
+	}
+	return bytes.NewBuffer(b)
+}
+
+func (p *NodeInfoPayload) Decode(b []byte) error {
+	return codec.UDPUnmarshal(b, p)
 }
 
 type KeyValuePayload struct {
@@ -69,20 +87,20 @@ func NewPongMessage(from, to Address, seq uint64) *Message {
 	}
 }
 
-func NewAliveMessage(from, to Address) *Message {
+func NewAliveMessage(from, to Address, payload []byte) *Message {
 	return &Message{
 		MsgType: Alive,
 		From:    from,
 		To:      to,
-		Payload: nil,
+		Payload: payload,
 	}
 }
 
-func NewDeadMessage(from, to Address) *Message {
+func NewDeadMessage(from, to Address, payload []byte) *Message {
 	return &Message{
 		MsgType: Dead,
 		From:    from,
 		To:      to,
-		Payload: nil,
+		Payload: payload,
 	}
 }

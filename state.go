@@ -10,7 +10,7 @@ const (
 
 // 由远程节点发起的状态变更触发
 // 也可以由心跳判断的状态变更触发
-func (s *SyncMember) alive(remoteNodeInfo *NodeInfo) {
+func (s *SyncMember) alive(remoteNodeInfo *NodeInfoPayload) {
 	node, ok := s.nodesMap[remoteNodeInfo.Addr.String()]
 	if EqualAddress(remoteNodeInfo.Addr, s.me.address) {
 		return
@@ -18,23 +18,17 @@ func (s *SyncMember) alive(remoteNodeInfo *NodeInfo) {
 	// 如果节点不存在，添加节点
 	if !ok {
 		node = NewNode(remoteNodeInfo.Addr, remoteNodeInfo)
-		s.AddNode(node)
 		node.ChangeState(NodeAlive)
 		node.BecomeCredible()
+		s.AddNode(node)
 		s.logger.Info("add remote node", "me", s.me.address.Name, "remote node", remoteNodeInfo)
 		return
 	}
 
-	if node.GetInfo().Version == remoteNodeInfo.Version {
-		s.logger.Debug("alive remote node version is same", "remote node", remoteNodeInfo, "local node", node.GetInfo())
+	if remoteNodeInfo.Version <= node.GetInfo().Version && node.nodeLocalInfo.nodeState == NodeAlive {
 		return
 	}
 
-	//判断远程节点版本
-	if node.GetInfo().Version > remoteNodeInfo.Version {
-		s.logger.Warn("alive remote node version is old", "me", s.me.address.Name, "remote node", remoteNodeInfo, "local node", node.GetInfo())
-		return
-	}
 	s.logger.Info("alive remote node version is new", "me", s.me.address.Name, "remote node", remoteNodeInfo, "local node", node.GetInfo())
 	node.IncreaseVersionTo(remoteNodeInfo.Version)
 
@@ -42,12 +36,16 @@ func (s *SyncMember) alive(remoteNodeInfo *NodeInfo) {
 	if node.nodeLocalInfo.nodeState != NodeAlive {
 		node.ChangeState(NodeAlive)
 		node.BecomeCredible()
+
+		//广播
+		b := NewGossipBoardcast(s.me.address.Name, remoteNodeInfo.Encode().Bytes())
+		s.boardcastQueue.PutGossipBoardcast(b)
 	}
 }
 
 // 由远程节点发起的状态变更触发
 // 也可以由心跳判断的状态变更触发
-func (s *SyncMember) dead(remoteNodeInfo *NodeInfo) {
+func (s *SyncMember) dead(remoteNodeInfo *NodeInfoPayload) {
 	node, ok := s.nodesMap[remoteNodeInfo.Addr.String()]
 	if EqualAddress(remoteNodeInfo.Addr, s.me.address) {
 		return
@@ -57,16 +55,17 @@ func (s *SyncMember) dead(remoteNodeInfo *NodeInfo) {
 		return
 	}
 
-	if node.GetInfo().Version == remoteNodeInfo.Version {
-		s.logger.Debug("alive remote node version is same", "remote node", remoteNodeInfo, "local node", node.GetInfo())
+	if remoteNodeInfo.Version <= node.GetInfo().Version && node.nodeLocalInfo.nodeState == NodeDead {
 		return
 	}
 
-	//判断远程节点版本
-	if node.GetInfo().Version > remoteNodeInfo.Version {
-		s.logger.Warn("dead remote node version is old", "me", s.me.address.Name, "remote node", remoteNodeInfo, "local node", node.GetInfo())
+	//如果收到的死亡节点是自己，需要反驳
+	if remoteNodeInfo.Addr.String() == s.me.address.String() {
+		//反驳
+		s.refute()
 		return
 	}
+
 	s.logger.Info("dead remote node version is new", "me", s.me.address.Name, "remote node", remoteNodeInfo, "local node", node.GetInfo())
 	node.IncreaseVersionTo(remoteNodeInfo.Version)
 
@@ -74,5 +73,17 @@ func (s *SyncMember) dead(remoteNodeInfo *NodeInfo) {
 	if node.nodeLocalInfo.nodeState != NodeDead {
 		node.ChangeState(NodeDead)
 		node.BecomeUnCredible()
+
+		//广播
+		b := NewGossipBoardcast(s.me.address.Name, remoteNodeInfo.Encode().Bytes())
+		s.boardcastQueue.PutGossipBoardcast(b)
 	}
+}
+
+func (s *SyncMember) refute() {
+	//广播
+	payload := s.me.GetInfo()
+	buf := payload.Encode()
+	b := NewGossipBoardcast(s.me.address.Name, buf.Bytes())
+	s.boardcastQueue.PutGossipBoardcast(b)
 }

@@ -73,7 +73,7 @@ func (s *SyncMember) handlepushPull(conn net.Conn) {
 	readTCPMessage(conn, buf)
 
 	//unmarshal body
-	var remote []NodeInfo
+	var remote []NodeInfoPayload
 	if err := codec.TCPUnmarshal(buf.Bytes(), &remote); err != nil {
 		s.logger.Error("handlepushPull", "unmarshal error", err)
 		return
@@ -85,7 +85,7 @@ func (s *SyncMember) handlepushPull(conn net.Conn) {
 	}
 
 	//PUSH or PUT
-	nodeinfos := make([]NodeInfo, len(s.nodes)+1)
+	nodeinfos := make([]NodeInfoPayload, len(s.nodes)+1)
 	for i, n := range s.nodes {
 		nodeinfos[i] = n.GetInfo()
 	}
@@ -102,7 +102,7 @@ func (s *SyncMember) handlepushPull(conn net.Conn) {
 	}
 }
 
-func (s *SyncMember) pushPullNode(node *Node, join bool) (remote []NodeInfo, err error) {
+func (s *SyncMember) pushPullNode(node *Node, join bool) (remote []NodeInfoPayload, err error) {
 	s.nMutex.Lock()
 	defer s.nMutex.Unlock()
 	if join {
@@ -117,11 +117,11 @@ func (s *SyncMember) pushPullNode(node *Node, join bool) (remote []NodeInfo, err
 // TCP
 // 发起pushPull请求
 // 推送本地节点的数据；读取远程节点的数据
-func (s *SyncMember) pushPullNodeInternal(node *Node, nodes []*Node) (remote []NodeInfo, err error) {
+func (s *SyncMember) pushPullNodeInternal(node *Node, nodes []*Node) (remote []NodeInfoPayload, err error) {
 	s.logger.Debug("pushPullNode", "target node", node.Addr())
 
 	//PUSH or PUT
-	nodeinfos := make([]NodeInfo, len(nodes))
+	nodeinfos := make([]NodeInfoPayload, len(nodes))
 	for i, n := range nodes {
 		nodeinfos[i] = n.GetInfo()
 	}
@@ -138,14 +138,14 @@ func (s *SyncMember) pushPullNodeInternal(node *Node, nodes []*Node) (remote []N
 	//PULL or GET
 	buf.Reset()
 	readTCPMessage(conn, buf)
-	remote = make([]NodeInfo, 0)
+	remote = make([]NodeInfoPayload, 0)
 	if err = codec.TCPUnmarshal(buf.Bytes(), &remote); err != nil {
 		return
 	}
 	return
 }
 
-func (s *SyncMember) MergeNodes(remote []NodeInfo) error {
+func (s *SyncMember) MergeNodes(remote []NodeInfoPayload) error {
 	if len(remote) == 0 {
 		return nil
 	}

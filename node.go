@@ -10,13 +10,6 @@ type NodeLocalInfo struct {
 	credibility atomic.Int32
 }
 
-type NodeInfo struct {
-	Addr      Address
-	NodeState NodeStateType
-	Version   int64
-	TTL       int8
-}
-
 type Node struct {
 	address       Address
 	nodeLocalInfo NodeLocalInfo
@@ -33,7 +26,7 @@ func (s *SyncMember) AddNode(node *Node) {
 	s.nodesMap[node.Addr().String()] = node
 }
 
-func NewNode(addr Address, nodeInfo *NodeInfo) *Node {
+func NewNode(addr Address, nodeInfo *NodeInfoPayload) *Node {
 	n := &Node{
 		address: addr,
 		nodeLocalInfo: NodeLocalInfo{
@@ -110,14 +103,10 @@ func (n *Node) Addr() Address {
 	return n.address
 }
 
-func (n *Node) GetInfo() NodeInfo {
-	return NodeInfo{
+func (n *Node) GetInfo() NodeInfoPayload {
+	return NodeInfoPayload{
 		Addr:      n.address,
 		NodeState: n.nodeLocalInfo.nodeState,
 		Version:   n.nodeLocalInfo.version.Load(),
 	}
-}
-
-func (ni *NodeInfo) SetTTL(ttl int8) {
-	ni.TTL = ttl
 }

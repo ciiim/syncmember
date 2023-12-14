@@ -36,6 +36,8 @@ type SyncMember struct {
 	//等待Pong的节点
 	waitPongMap map[string]*Node //ip:port -> *Node
 
+	boardcastQueue *BoardcastQueue
+
 	//副本
 	//存储用户数据
 	kvcopyMap sync.Map //key -> value
@@ -53,10 +55,11 @@ func NewSyncMember(nodeName string, config *Config) *SyncMember {
 		stopCh:   make(chan struct{}, 2),
 		stopVar:  new(atomic.Bool),
 
-		nMutex:      new(sync.Mutex),
-		nodes:       make([]*Node, 0),
-		nodesMap:    make(map[string]*Node),
-		waitPongMap: make(map[string]*Node),
+		nMutex:         new(sync.Mutex),
+		nodes:          make([]*Node, 0),
+		nodesMap:       make(map[string]*Node),
+		waitPongMap:    make(map[string]*Node),
+		boardcastQueue: NewBoardcastQueue(),
 
 		kvcopyMap: sync.Map{},
 
@@ -105,6 +108,12 @@ func (s *SyncMember) init(config *Config) error {
 
 	s.RegisterMessageHandler(Ping, s.handlePing)
 	s.RegisterMessageHandler(Pong, s.handlePong)
+
+	s.RegisterMessageHandler(Alive, s.handleGossip)
+	s.RegisterMessageHandler(Dead, s.handleGossip)
+	s.RegisterMessageHandler(KVSet, s.handleGossip)
+	s.RegisterMessageHandler(KVDelete, s.handleGossip)
+	s.RegisterMessageHandler(KVUpdate, s.handleGossip)
 
 	//UDP service
 	go s.udpTransport.Handle()
