@@ -28,11 +28,19 @@ func TCPMarshal(v any) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return buildMessage(body)
+	return buildMessage(body, 0)
 
 }
 
-func buildMessage(body []byte) ([]byte, error) {
+func TCPMarshalWithExtra(v any, extra int8) ([]byte, error) {
+	body, err := msgpack.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	return buildMessage(body, extra)
+}
+
+func buildMessage(body []byte, extra int8) ([]byte, error) {
 	bodyLen := len(body)
 	if bodyLen > math.MaxInt16 {
 		return nil, fmt.Errorf("body length %d is too long", bodyLen)
@@ -51,7 +59,7 @@ func buildMessage(body []byte) ([]byte, error) {
 	contentLengthSlice[1] = byte(uint8(bodyLen16))
 
 	//[4] extra flag
-	msg[4] = 0
+	msg[4] = byte(extra)
 
 	//[5:len-3] body
 	copy(msg[5:], body)
@@ -67,6 +75,7 @@ func ValidateHeader(header []byte) error {
 	if len(header) != HeaderLength {
 		return fmt.Errorf("invalid header length %d", len(header))
 	}
+	//Check begin
 	begin := uint16(header[0])<<8 | uint16(header[1])
 	if begin != Begin {
 		return fmt.Errorf("invalid begin %d", begin)
@@ -79,4 +88,11 @@ func GetBodyLength(header []byte) int {
 		return 0
 	}
 	return int(uint16(header[2])<<8 | uint16(header[3]))
+}
+
+func GetExtra(header []byte) byte {
+	if len(header) != HeaderLength {
+		return 0
+	}
+	return header[4]
 }

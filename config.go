@@ -29,7 +29,7 @@ var (
 
 	//Ping and Goosip
 	DefaultFanout        = 3
-	DefaultUDPBufferSize = 2048
+	DefaultUDPBufferSize = 1500
 	DefaultPushPullNums  = 1
 
 	//Net
