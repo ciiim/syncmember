@@ -22,10 +22,11 @@ func main() {
 	go s1.Run()
 	go s2.Run()
 	go s3.Run()
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second * 1)
 	s1.Join("172.26.123.188:9001")
 	time.Sleep(time.Second * 1)
-
 	s2.Join("172.26.123.188:9002")
+	time.Sleep(time.Second * 10)
+	s3.Shutdown()
 	si.Wait()
 }
