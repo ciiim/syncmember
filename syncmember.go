@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ciiim/syncmember/codec"
+	"github.com/ciiim/syncmember/monitor"
 	"github.com/ciiim/syncmember/transport"
 )
 
@@ -122,6 +123,8 @@ func (s *SyncMember) init(config *Config) error {
 	//TCP service
 	go s.tcpTransport.Listen()
 
+	go monitor.ReportMemoryUsagePer(time.Minute)
+
 	time.Sleep(100 * time.Millisecond) //FIXME: wait for udp service start
 
 	return nil
@@ -179,7 +182,7 @@ func (s *SyncMember) RegisterMessageHandler(msgType MessageType, handler PacketH
 func (s *SyncMember) PacketHandler(p *transport.Packet) {
 	start := time.Now()
 	var packet Packet
-	err := codec.UDPUnmarshal(p.Buffer.Bytes(), &packet)
+	err := codec.Unmarshal(p.Buffer.Bytes(), &packet)
 	if err != nil {
 		s.logger.Error("UDPUnmarshal error", "error", err)
 		return

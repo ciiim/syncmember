@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/ciiim/syncmember/codec"
+	"github.com/ciiim/syncmember/reader"
 )
 
 func (s *SyncMember) pushPull() {
@@ -40,27 +41,6 @@ func (s *SyncMember) doPushPull() {
 	}
 }
 
-func readTCPMessage(conn net.Conn, buf *bytes.Buffer) error {
-	header := make([]byte, codec.HeaderLength)
-	_, err := conn.Read(header)
-	if err != nil {
-		return err
-	}
-	if err := codec.ValidateHeader(header); err != nil {
-		return err
-	}
-
-	//read body
-	bodyLen := codec.GetBodyLength(header)
-	b := make([]byte, bodyLen)
-	_, err = conn.Read(b)
-	if err != nil {
-		return err
-	}
-	buf.Write(b)
-	return nil
-}
-
 // TCP
 // 处理pushPull请求
 // 读取远程节点的数据；推送本地节点的数据
@@ -70,11 +50,14 @@ func (s *SyncMember) handlepushPull(conn net.Conn) {
 
 	//PULL OR GET
 	buf := bytes.NewBuffer(nil)
-	readTCPMessage(conn, buf)
+	if err := reader.ReadTCPMessage(conn, buf, codec.AACoder); err != nil {
+		s.logger.Error("handlepushPull", "read error", err)
+		return
+	}
 
 	//unmarshal body
 	var remote []NodeInfoPayload
-	if err := codec.TCPUnmarshal(buf.Bytes(), &remote); err != nil {
+	if err := codec.Unmarshal(buf.Bytes(), &remote); err != nil {
 		s.logger.Error("handlepushPull", "unmarshal error", err)
 		return
 	}
@@ -90,12 +73,17 @@ func (s *SyncMember) handlepushPull(conn net.Conn) {
 		nodeinfos[i] = n.GetInfo()
 	}
 	nodeinfos[len(s.nodes)] = s.me.GetInfo()
-	bufBytes, err := codec.TCPMarshal(nodeinfos)
+	bufBytes, err := codec.Marshal(nodeinfos)
 	if err != nil {
 		s.logger.Error("handlepushPull", "marshal error", err)
 		return
 	}
-	_, err = conn.Write(bufBytes)
+	messageBytes, err := codec.AACoder.Encode(bufBytes)
+	if err != nil {
+		s.logger.Error("handlepushPull", "encode error", err)
+		return
+	}
+	_, err = conn.Write(messageBytes)
 	if err != nil {
 		s.logger.Error("handlepushPull", "write error", err)
 		return
@@ -125,11 +113,15 @@ func (s *SyncMember) pushPullNodeInternal(node *Node, nodes []*Node) (remote []N
 	for i, n := range nodes {
 		nodeinfos[i] = n.GetInfo()
 	}
-	bufBytes, err := codec.TCPMarshal(nodeinfos)
+	bufBytes, err := codec.Marshal(nodeinfos)
 	if err != nil {
 		return
 	}
-	buf := bytes.NewBuffer(bufBytes)
+	messageBytes, err := codec.AACoder.Encode(bufBytes)
+	if err != nil {
+		return
+	}
+	buf := bytes.NewBuffer(messageBytes)
 	conn, err := s.tcpTransport.DialAndSendRawBytes(node.Addr().String(), buf)
 	if err != nil {
 		return
@@ -137,9 +129,12 @@ func (s *SyncMember) pushPullNodeInternal(node *Node, nodes []*Node) (remote []N
 
 	//PULL or GET
 	buf.Reset()
-	readTCPMessage(conn, buf)
+	if err = reader.ReadTCPMessage(conn, buf, codec.AACoder); err != nil {
+		return
+	}
+
 	remote = make([]NodeInfoPayload, 0)
-	if err = codec.TCPUnmarshal(buf.Bytes(), &remote); err != nil {
+	if err = codec.Unmarshal(buf.Bytes(), &remote); err != nil {
 		return
 	}
 	return

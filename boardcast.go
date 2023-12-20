@@ -1,6 +1,7 @@
 package syncmember
 
 import (
+	"log"
 	"sync"
 
 	"github.com/google/btree"
@@ -17,7 +18,7 @@ type BoardcastQueue struct {
 
 type GossipBoardcast struct {
 	name string
-	msg  []byte
+	msg  *Message
 	life int
 }
 
@@ -31,7 +32,7 @@ func (b *BoardcastQueue) lazyInit() {
 	}
 }
 
-func NewGossipBoardcast(name string, msg []byte) *GossipBoardcast {
+func NewGossipBoardcast(name string, msg *Message) *GossipBoardcast {
 	return &GossipBoardcast{
 		name: name,
 		msg:  msg,
@@ -41,9 +42,9 @@ func NewGossipBoardcast(name string, msg []byte) *GossipBoardcast {
 
 func (g *GossipBoardcast) Less(than btree.Item) bool {
 	//比较消息长度，若相同则比较生命值
-	if len(g.msg) < len(than.(*GossipBoardcast).msg) {
+	if len(g.msg.GetPayload()) < len(than.(*GossipBoardcast).msg.GetPayload()) {
 		return true
-	} else if len(g.msg) == len(than.(*GossipBoardcast).msg) {
+	} else if len(g.msg.GetPayload()) == len(than.(*GossipBoardcast).msg.GetPayload()) {
 		if g.life < than.(*GossipBoardcast).life {
 			return true
 		}
@@ -68,19 +69,30 @@ func (b *BoardcastQueue) PutGossipBoardcast(item Boardcast) btree.Item {
 
 }
 
-func (b *BoardcastQueue) GetGossipBoardcast(availableBytes int) [][]byte {
+func (b *BoardcastQueue) GetGossipBoardcast(availableBytes int) []*Message {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	//每次取出最小的，如果小于limitBytes，就删除
-	msgs := make([][]byte, 0)
+
+	if b.tq == nil {
+		return nil
+	}
+
+	msgs := make([]*Message, 0)
 	reinsert := make([]*GossipBoardcast, 0)
 	b.tq.Ascend(func(i btree.Item) bool {
 		gb := i.(*GossipBoardcast)
-		if availableBytes < len(gb.msg) {
+		if gb.msg == nil {
+			log.Fatalf("gb.msg is nil")
+		}
+		if gb.msg.GetPayload() == nil {
+			log.Fatalf("gb.msg.GetPayload() is nil")
+		}
+		if availableBytes < len(gb.msg.GetPayload())+1+8 { // + 1 MessageType in8 + 8 Seq int64
 			return false
 		}
 		msgs = append(msgs, gb.msg)
-		availableBytes -= len(gb.msg)
+		availableBytes -= len(gb.msg.GetPayload()) + 1 + 8
 		if gb.life > 0 {
 			gb.life--
 			reinsert = append(reinsert, gb)

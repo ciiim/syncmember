@@ -36,9 +36,18 @@ func (s *SyncMember) clearwaitPongMap() {
 	for k, node := range s.waitPongMap {
 		if node.nodeLocalInfo.credibility.Load()-1 <= 0 {
 			s.logger.Debug("[Ping]credibility is zero", "dead node", node.Addr())
-			s.logger.Info("Dead Node", "node", node.Addr())
+			s.logger.Info("Dead Node", "node", node.Addr(), "me", s.me.address.Name)
 			node.SetDead()
 			delete(s.waitPongMap, k)
+			//添加广播
+			nodePayload := &NodeInfoPayload{
+				Addr:      node.Addr(),
+				NodeState: NodeDead,
+				Version:   node.GetInfo().Version,
+			}
+			msg := NewDeadMessage(nodePayload.Encode().Bytes())
+			b := NewGossipBoardcast("dead", msg)
+			s.boardcastQueue.PutGossipBoardcast(b)
 		} else {
 			node.nodeLocalInfo.credibility.Add(-1)
 		}

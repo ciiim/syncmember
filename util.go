@@ -12,7 +12,7 @@ import (
 )
 
 func SendPacket(transport *transport.UDPTransport, packet *Packet) error {
-	b, err := codec.UDPMarshal(packet)
+	b, err := codec.Marshal(packet)
 	if err != nil {
 		return err
 	}

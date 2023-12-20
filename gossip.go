@@ -16,8 +16,30 @@ func (s *SyncMember) gossip() {
 func (s *SyncMember) doGossip() {
 	//取出Boardcast
 	availableBytes := s.config.UDPBufferSize
-	s.boardcastQueue.GetGossipBoardcast(availableBytes)
+	messages := s.boardcastQueue.GetGossipBoardcast(availableBytes)
+	if len(messages) == 0 {
+		return
+	}
+	//广播
+	s.nMutex.Lock()
+	defer s.nMutex.Unlock()
+	nodes := kRamdonNodes(s.config.Fanout, s.nodes, func(n *Node) bool {
+		return !n.IsCredible()
+	})
+	for _, node := range nodes {
+		for _, msgBytes := range messages { //XXX: 可以组装成一个包，无需多次发送
+			packet := buildPacketMessageBytes(msgBytes, s.host, node.Addr())
+			if err := SendPacket(s.udpTransport, packet); err != nil {
+				s.logger.Error("SendMsg", "error", err)
+				continue
+			}
+		}
+	}
 
+}
+
+func buildPacketMessageBytes(msg *Message, from, to Address) *Packet {
+	return NewPacket(msg, from, to)
 }
 
 func (s *SyncMember) handleGossip(packet *Packet) {
@@ -38,7 +60,7 @@ func (s *SyncMember) handleGossip(packet *Packet) {
 
 func (s *SyncMember) handleStateChange(msg *Message) {
 	nodeinfo := NodeInfoPayload{}
-	if err := codec.UDPUnmarshal(msg.Payload, &nodeinfo); err != nil {
+	if err := codec.Unmarshal(msg.Payload, &nodeinfo); err != nil {
 		s.logger.Error("handleStateChange", "UDPUnmarshal error", err)
 		return
 	}
@@ -53,7 +75,7 @@ func (s *SyncMember) handleStateChange(msg *Message) {
 
 func (s *SyncMember) handleKV(msg *Message) {
 	kv := KeyValuePayload{}
-	if err := codec.UDPUnmarshal(msg.Payload, &kv); err != nil {
+	if err := codec.Unmarshal(msg.Payload, &kv); err != nil {
 		s.logger.Error("handleKV", "UDPUnmarshal error", err)
 		return
 	}

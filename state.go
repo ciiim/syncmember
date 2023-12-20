@@ -21,15 +21,21 @@ func (s *SyncMember) alive(remoteNodeInfo *NodeInfoPayload) {
 		node.ChangeState(NodeAlive)
 		node.BecomeCredible()
 		s.AddNode(node)
+
+		//广播
+		msg := NewMessage(Alive, remoteNodeInfo.Encode().Bytes())
+		b := NewGossipBoardcast(s.me.address.Name, msg)
+		s.boardcastQueue.PutGossipBoardcast(b)
+
 		s.logger.Info("add remote node", "me", s.me.address.Name, "remote node", remoteNodeInfo)
 		return
 	}
 
-	if remoteNodeInfo.Version <= node.GetInfo().Version && node.nodeLocalInfo.nodeState == NodeAlive {
+	if remoteNodeInfo.Version <= node.GetInfo().Version {
 		return
 	}
 
-	s.logger.Info("alive remote node version is new", "me", s.me.address.Name, "remote node", remoteNodeInfo, "local node", node.GetInfo())
+	s.logger.Info("node become alive", "me", s.me.address.Name, "node", remoteNodeInfo.Addr, "remote version", remoteNodeInfo.Version, "local version", node.GetInfo().Version)
 	node.IncreaseVersionTo(remoteNodeInfo.Version)
 
 	// 如果节点存在，但是状态不是存活，设置节点状态为存活
@@ -38,7 +44,8 @@ func (s *SyncMember) alive(remoteNodeInfo *NodeInfoPayload) {
 		node.BecomeCredible()
 
 		//广播
-		b := NewGossipBoardcast(s.me.address.Name, remoteNodeInfo.Encode().Bytes())
+		msg := NewMessage(Alive, remoteNodeInfo.Encode().Bytes())
+		b := NewGossipBoardcast(s.me.address.Name, msg)
 		s.boardcastQueue.PutGossipBoardcast(b)
 	}
 }
@@ -55,7 +62,7 @@ func (s *SyncMember) dead(remoteNodeInfo *NodeInfoPayload) {
 		return
 	}
 
-	if remoteNodeInfo.Version <= node.GetInfo().Version && node.nodeLocalInfo.nodeState == NodeDead {
+	if remoteNodeInfo.Version <= node.GetInfo().Version {
 		return
 	}
 
@@ -66,7 +73,7 @@ func (s *SyncMember) dead(remoteNodeInfo *NodeInfoPayload) {
 		return
 	}
 
-	s.logger.Info("dead remote node version is new", "me", s.me.address.Name, "remote node", remoteNodeInfo, "local node", node.GetInfo())
+	s.logger.Info("node become dead", "me", s.me.address.Name, "node", remoteNodeInfo.Addr, "remote version", remoteNodeInfo.Version, "local version", node.GetInfo().Version)
 	node.IncreaseVersionTo(remoteNodeInfo.Version)
 
 	// 如果节点存在，但是状态不是死亡，设置节点状态为死亡
@@ -75,7 +82,8 @@ func (s *SyncMember) dead(remoteNodeInfo *NodeInfoPayload) {
 		node.BecomeUnCredible()
 
 		//广播
-		b := NewGossipBoardcast(s.me.address.Name, remoteNodeInfo.Encode().Bytes())
+		msg := NewMessage(Dead, remoteNodeInfo.Encode().Bytes())
+		b := NewGossipBoardcast(s.me.address.Name, msg)
 		s.boardcastQueue.PutGossipBoardcast(b)
 	}
 }
@@ -84,6 +92,7 @@ func (s *SyncMember) refute() {
 	//广播
 	payload := s.me.GetInfo()
 	buf := payload.Encode()
-	b := NewGossipBoardcast(s.me.address.Name, buf.Bytes())
+	msg := NewMessage(MessageType(s.me.GetInfo().NodeState), buf.Bytes())
+	b := NewGossipBoardcast(s.me.address.Name, msg)
 	s.boardcastQueue.PutGossipBoardcast(b)
 }

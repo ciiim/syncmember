@@ -8,6 +8,27 @@ import (
 
 type MessageType int8
 
+func (m MessageType) String() string {
+	switch m {
+	case Ping:
+		return "Ping"
+	case Pong:
+		return "Pong"
+	case Alive:
+		return "Alive"
+	case Dead:
+		return "Dead"
+	case KVSet:
+		return "KVSet"
+	case KVDelete:
+		return "KVDelete"
+	case KVUpdate:
+		return "KVUpdate"
+	default:
+		return "Unknown"
+	}
+}
+
 const (
 	Ping MessageType = iota
 	Pong
@@ -26,6 +47,14 @@ type Message struct {
 	Payload []byte
 }
 
+func NewMessage(msgType MessageType, payload []byte) *Message {
+
+	return &Message{
+		MsgType: msgType,
+		Payload: payload,
+	}
+}
+
 type NodeInfoPayload struct {
 	Addr      Address
 	NodeState NodeStateType
@@ -33,7 +62,7 @@ type NodeInfoPayload struct {
 }
 
 func (p *NodeInfoPayload) Encode() *bytes.Buffer {
-	b, err := codec.UDPMarshal(p)
+	b, err := codec.Marshal(p)
 	if err != nil {
 		return nil
 	}
@@ -41,7 +70,7 @@ func (p *NodeInfoPayload) Encode() *bytes.Buffer {
 }
 
 func (p *NodeInfoPayload) Decode(b []byte) error {
-	return codec.UDPUnmarshal(b, p)
+	return codec.Unmarshal(b, p)
 }
 
 type KeyValuePayload struct {
@@ -50,7 +79,7 @@ type KeyValuePayload struct {
 }
 
 func (p *KeyValuePayload) Encode() *bytes.Buffer {
-	b, err := codec.UDPMarshal(p)
+	b, err := codec.Marshal(p)
 	if err != nil {
 		return nil
 	}
@@ -58,11 +87,11 @@ func (p *KeyValuePayload) Encode() *bytes.Buffer {
 }
 
 func (p *KeyValuePayload) Decode(b []byte) error {
-	return codec.UDPUnmarshal(b, p)
+	return codec.Unmarshal(b, p)
 }
 
-func (m *Message) GetPayload() *bytes.Buffer {
-	return nil
+func (m *Message) GetPayload() []byte {
+	return m.Payload
 }
 
 func NewPingMessage() *Message {
@@ -83,14 +112,14 @@ func NewPongMessage(seq uint64) *Message {
 	}
 }
 
-func NewAliveMessage(from, to Address, payload []byte) *Message {
+func NewAliveMessage(payload []byte) *Message {
 	return &Message{
 		MsgType: Alive,
 		Payload: payload,
 	}
 }
 
-func NewDeadMessage(from, to Address, payload []byte) *Message {
+func NewDeadMessage(payload []byte) *Message {
 	return &Message{
 		MsgType: Dead,
 		Payload: payload,
