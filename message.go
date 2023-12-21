@@ -98,7 +98,6 @@ func NewPingMessage() *Message {
 	return &Message{
 		MsgType: Ping,
 		Seq:     randSeq(),
-
 		Payload: nil,
 	}
 }

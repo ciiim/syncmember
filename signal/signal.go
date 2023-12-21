@@ -47,8 +47,6 @@ func (s *SignalManager) Wait() {
 			go sh()
 		}
 	}
-	s.AddWatcher(os.Interrupt, "_internal_", InterruptSignalFunc)
-	s.sigs[os.Interrupt].handlers["_internal_"]()
 }
 
 // SignalHandlerFunc -> func()

@@ -6,9 +6,11 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/ciiim/syncmember/codec"
 	"github.com/ciiim/syncmember/transport"
+	"github.com/google/btree"
 )
 
 func SendPacket(transport *transport.UDPTransport, packet *Packet) error {
@@ -93,4 +95,10 @@ func GetHostIP() net.IP {
 
 func randSeq() uint64 {
 	return rand.Uint64()
+}
+
+// lay out btree to disk
+func layoutKVTree(tree *btree.BTree, mu *sync.Mutex) {
+	mu.Lock()
+	defer mu.Unlock()
 }

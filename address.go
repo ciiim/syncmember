@@ -6,9 +6,10 @@ import (
 )
 
 type Address struct {
-	IP   net.IP
-	Port int
-	Name string
+	IP         net.IP
+	addrString string
+	Port       int
+	Name       string
 }
 
 func (a Address) WithName(name string) Address {
@@ -17,7 +18,10 @@ func (a Address) WithName(name string) Address {
 }
 
 func (a Address) String() string {
-	return net.JoinHostPort(a.IP.String(), strconv.Itoa(a.Port))
+	if a.addrString == "" {
+		a.addrString = net.JoinHostPort(a.IP.String(), strconv.Itoa(a.Port))
+	}
+	return a.addrString
 }
 
 func (a Address) UDPAddr() *net.UDPAddr {

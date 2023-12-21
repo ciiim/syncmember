@@ -133,7 +133,7 @@ func (s *SyncMember) pushPullNodeInternal(node *Node, nodes []*Node) (remote []N
 		return
 	}
 
-	remote = make([]NodeInfoPayload, 0)
+	remote = nodeinfos[:0]
 	if err = codec.Unmarshal(buf.Bytes(), &remote); err != nil {
 		return
 	}

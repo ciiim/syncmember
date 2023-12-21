@@ -1,6 +1,8 @@
 package syncmember
 
-import "github.com/ciiim/syncmember/codec"
+import (
+	"github.com/ciiim/syncmember/codec"
+)
 
 func (s *SyncMember) gossip() {
 	for {

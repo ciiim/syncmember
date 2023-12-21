@@ -41,32 +41,43 @@ func NewGossipBoardcast(name string, msg *Message) *GossipBoardcast {
 }
 
 func (g *GossipBoardcast) Less(than btree.Item) bool {
-	//比较消息长度，若相同则比较生命值
-	if len(g.msg.GetPayload()) < len(than.(*GossipBoardcast).msg.GetPayload()) {
-		return true
-	} else if len(g.msg.GetPayload()) == len(than.(*GossipBoardcast).msg.GetPayload()) {
-		if g.life < than.(*GossipBoardcast).life {
-			return true
-		}
-	}
-
-	return false
+	//比较Name
+	isLess := g.name < than.(*GossipBoardcast).name
+	return isLess
+	// //比较消息长度，若相同则比较生命值
+	// if len(g.msg.GetPayload()) < len(than.(*GossipBoardcast).msg.GetPayload()) {
+	// 	return true
+	// } else if len(g.msg.GetPayload()) == len(than.(*GossipBoardcast).msg.GetPayload()) {
+	// 	if g.life < than.(*GossipBoardcast).life {
+	// 		return true
+	// 	}
+	// }
 }
 
-func (b *BoardcastQueue) PutGossipBoardcast(item Boardcast) btree.Item {
+func (b *BoardcastQueue) PutMessage(msgType MessageType, name string, payload []byte) {
+	msg := NewMessage(msgType, payload)
+	b.putGossipBoardcast(NewGossipBoardcast(name+msgType.String(), msg))
+}
+
+func (b *BoardcastQueue) putGossipBoardcast(item Boardcast) btree.Item {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.lazyInit()
+	if item == nil {
+		return nil
+	}
 	gb, ok := item.(*GossipBoardcast)
 	if ok {
-		has := b.tq.Has(gb)
-		if has {
-			b.tq.Delete(gb)
-			return nil
+		itemi := b.tq.Get(gb)
+		if itemi != nil {
+			//Name 相同则删除
+			if itemi.(*GossipBoardcast).name == gb.name {
+				b.tq.Delete(itemi)
+			}
 		}
 	}
-	return b.tq.ReplaceOrInsert(item)
-
+	replacedItem := b.tq.ReplaceOrInsert(item)
+	return replacedItem
 }
 
 func (b *BoardcastQueue) GetGossipBoardcast(availableBytes int) []*Message {

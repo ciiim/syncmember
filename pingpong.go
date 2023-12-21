@@ -22,8 +22,9 @@ func (s *SyncMember) doPing() {
 	nodes := kRamdonNodes(s.config.Fanout, s.nodes, func(n *Node) bool {
 		return !n.IsCredible()
 	})
+	var packet *Packet
 	for _, node := range nodes {
-		packet := NewPacket(NewPingMessage(), s.host, node.Addr())
+		packet = NewPacket(NewPingMessage(), s.host, node.Addr())
 		if err := SendPacket(s.udpTransport, packet); err != nil {
 			s.logger.Error("SendMsg", "error", err)
 		}
@@ -35,8 +36,7 @@ func (s *SyncMember) doPing() {
 func (s *SyncMember) clearwaitPongMap() {
 	for k, node := range s.waitPongMap {
 		if node.nodeLocalInfo.credibility.Load()-1 <= 0 {
-			s.logger.Debug("[Ping]credibility is zero", "dead node", node.Addr())
-			s.logger.Info("Dead Node", "node", node.Addr(), "me", s.me.address.Name)
+			s.logger.Info("[Ping failed]Node Become Dead", "node addr", node.Addr().String())
 			node.SetDead()
 			delete(s.waitPongMap, k)
 			//添加广播
@@ -45,9 +45,7 @@ func (s *SyncMember) clearwaitPongMap() {
 				NodeState: NodeDead,
 				Version:   node.GetInfo().Version,
 			}
-			msg := NewDeadMessage(nodePayload.Encode().Bytes())
-			b := NewGossipBoardcast("dead", msg)
-			s.boardcastQueue.PutGossipBoardcast(b)
+			s.boardcastQueue.PutMessage(Dead, node.Addr().String(), nodePayload.Encode().Bytes())
 		} else {
 			node.nodeLocalInfo.credibility.Add(-1)
 		}

@@ -12,6 +12,7 @@ import (
 	"github.com/ciiim/syncmember/codec"
 	"github.com/ciiim/syncmember/monitor"
 	"github.com/ciiim/syncmember/transport"
+	"github.com/google/btree"
 )
 
 type SyncMember struct {
@@ -41,7 +42,8 @@ type SyncMember struct {
 
 	//副本
 	//存储用户数据
-	kvcopyMap sync.Map //key -> value
+	kvcopyTree *btree.BTree
+	kvTreeMu   *sync.RWMutex
 
 	messageHandlers map[MessageType]PacketHandlerFunc
 
@@ -62,7 +64,7 @@ func NewSyncMember(nodeName string, config *Config) *SyncMember {
 		waitPongMap:    make(map[string]*Node),
 		boardcastQueue: NewBoardcastQueue(),
 
-		kvcopyMap: sync.Map{},
+		kvTreeMu: new(sync.RWMutex),
 
 		messageHandlers: make(map[MessageType]PacketHandlerFunc),
 	}
@@ -123,7 +125,7 @@ func (s *SyncMember) init(config *Config) error {
 	//TCP service
 	go s.tcpTransport.Listen()
 
-	go monitor.ReportMemoryUsagePer(time.Minute)
+	go monitor.ReportMemoryUsagePer(time.Second * 10)
 
 	time.Sleep(100 * time.Millisecond) //FIXME: wait for udp service start
 
@@ -143,7 +145,7 @@ func (s *SyncMember) Run() error {
 }
 
 func (s *SyncMember) Join(addr string) error {
-	s.logger.Info("Join", "addr", addr)
+	s.logger.Info("Join in", "member", addr)
 
 	node := NewNode(ResolveAddr(addr), nil)
 
@@ -173,8 +175,7 @@ func (s *SyncMember) JoinDebug(addr string) error {
 
 func (s *SyncMember) RegisterMessageHandler(msgType MessageType, handler PacketHandlerFunc) {
 	if handler == nil {
-		s.logger.Error("RegisterMessageHandler handler is nil")
-		panic("RegisterMessageHandler handler is nil")
+		panic("Nil RegisterMessageHandler handler")
 	}
 	s.messageHandlers[msgType] = handler
 }
