@@ -20,7 +20,7 @@ func main() {
     // create two nodes
     // once created, nodes can be joined
     s1 := syncmember.NewSyncMember("node1",syncmember.DefaultConfig().SetPort(9001))
-    s2 := syncmember.NewSyncMember("node2"，syncmember.DefaultConfig().SetPort(9002))
+    s2 := syncmember.NewSyncMember("node2",syncmember.DefaultConfig().SetPort(9002))
 
     // add signal watcher
     si := signal.NewManager()
