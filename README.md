@@ -52,3 +52,7 @@ func main() {
     s1.GetValue("key1") // return nil
 }
 ```
+
+### TODO List
+- [ ] 支持间接通信 Support Indirect communication
+- [ ] 支持kv数据持久化 Support kv data persistence
