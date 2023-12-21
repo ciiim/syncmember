@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/ciiim/syncmember/codec"
-	"github.com/ciiim/syncmember/monitor"
 	"github.com/ciiim/syncmember/transport"
 	"github.com/google/btree"
 )
@@ -125,7 +124,7 @@ func (s *SyncMember) init(config *Config) error {
 	//TCP service
 	go s.tcpTransport.Listen()
 
-	go monitor.ReportMemoryUsagePer(time.Second * 10)
+	// go monitor.ReportMemoryUsagePer(time.Second * 10)
 
 	time.Sleep(100 * time.Millisecond) //FIXME: wait for udp service start
 
