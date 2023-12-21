@@ -19,11 +19,11 @@ go get github.com/ciiim/syncmember
 func main() {
     // create two nodes
     // once created, nodes can be joined
-	s1 := syncmember.NewSyncMember("node1",syncmember.DefaultConfig().SetPort(9001))
+    s1 := syncmember.NewSyncMember("node1",syncmember.DefaultConfig().SetPort(9001))
     s2 := syncmember.NewSyncMember("node2"，syncmember.DefaultConfig().SetPort(9002))
 
     // add signal watcher
-	si := signal.NewManager()
+    si := signal.NewManager()
     si.AddWatcher(os.Interrupt, "shutdown", func() {
 		s1.Shutdown()
 		s2.Shutdown()
