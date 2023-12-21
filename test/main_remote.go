@@ -8,7 +8,7 @@ import (
 	"github.com/ciiim/syncmember/signal"
 )
 
-func main1() {
+func Test() {
 	si := signal.NewManager()
 	s1 := syncmember.NewSyncMember("node1", syncmember.DebugConfig().SetLogLevel(slog.LevelDebug))
 	si.AddWatcher(os.Interrupt, "shutdown", func() {
