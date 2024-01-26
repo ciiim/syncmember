@@ -24,6 +24,10 @@ const (
 	HeaderLength int = BeginBytes + LengthBytes
 )
 
+const (
+	AHeadLength = 4
+)
+
 var AACoder ACoder
 
 type ACoder struct {
