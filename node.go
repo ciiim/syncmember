@@ -26,7 +26,7 @@ func (s *SyncMember) AddNode(node *Node) {
 	s.nodesMap[node.Addr().String()] = node
 }
 
-func NewNode(addr Address, nodeInfo *NodeInfoPayload) *Node {
+func newNode(addr Address, nodeInfo *NodeInfoPayload) *Node {
 	n := &Node{
 		address: addr,
 		nodeLocalInfo: NodeLocalInfo{

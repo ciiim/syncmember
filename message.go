@@ -47,7 +47,7 @@ type Message struct {
 	Payload []byte
 }
 
-func NewMessage(msgType MessageType, payload []byte) *Message {
+func newMessage(msgType MessageType, payload []byte) *Message {
 
 	return &Message{
 		MsgType: msgType,
@@ -94,7 +94,7 @@ func (m *Message) GetPayload() []byte {
 	return m.Payload
 }
 
-func NewPingMessage() *Message {
+func newPingMessage() *Message {
 	return &Message{
 		MsgType: Ping,
 		Seq:     randSeq(),
@@ -102,7 +102,7 @@ func NewPingMessage() *Message {
 	}
 }
 
-func NewPongMessage(seq uint64) *Message {
+func newPongMessage(seq uint64) *Message {
 	return &Message{
 		MsgType: Pong,
 		Seq:     seq + 1,
@@ -111,14 +111,14 @@ func NewPongMessage(seq uint64) *Message {
 	}
 }
 
-func NewAliveMessage(payload []byte) *Message {
+func newAliveMessage(payload []byte) *Message {
 	return &Message{
 		MsgType: Alive,
 		Payload: payload,
 	}
 }
 
-func NewDeadMessage(payload []byte) *Message {
+func newDeadMessage(payload []byte) *Message {
 	return &Message{
 		MsgType: Dead,
 		Payload: payload,

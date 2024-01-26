@@ -143,10 +143,10 @@ func (s *SyncMember) readConfig(config *Config) error {
 	}
 
 	if config.AdvertiseIP == nil {
-		config.AdvertiseIP = GetHostIP()
+		config.AdvertiseIP = getHostIP()
 	}
 
-	s.host = ResolveAddr(fmt.Sprintf("%s:%d", config.AdvertiseIP.String(), config.AdvertisePort))
+	s.host = resolveAddr(fmt.Sprintf("%s:%d", config.AdvertiseIP.String(), config.AdvertisePort))
 
 	s.logger = initLogger(config)
 	s.pingTicker = time.NewTicker(config.PingInterval)

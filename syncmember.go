@@ -61,7 +61,7 @@ func NewSyncMember(nodeName string, config *Config) *SyncMember {
 		nodes:          make([]*Node, 0),
 		nodesMap:       make(map[string]*Node),
 		waitPongMap:    make(map[string]*Node),
-		boardcastQueue: NewBoardcastQueue(),
+		boardcastQueue: newBoardcastQueue(),
 
 		kvTreeMu: new(sync.RWMutex),
 
@@ -92,7 +92,7 @@ func (s *SyncMember) init(config *Config) error {
 		ListenAddr:    listenAddr,
 		Logger:        s.logger,
 		UDPBuffer:     s.config.UDPBufferSize,
-		PacketHandler: s.PacketHandler,
+		PacketHandler: s.packetHandler,
 	}
 
 	tcpConfig := transport.TCPConfig{
@@ -102,20 +102,20 @@ func (s *SyncMember) init(config *Config) error {
 	}
 
 	s.host = s.host.WithName(s.nodeName)
-	s.me = NewNode(s.host, nil)
+	s.me = newNode(s.host, nil)
 	s.me.SetAlive()
 
 	s.udpTransport = transport.NewUDPTransport(&udpConfig, s.stopVar)
 	s.tcpTransport = transport.NewTCPTransport(&tcpConfig, s.stopVar, s.handlepushPull)
 
-	s.RegisterMessageHandler(Ping, s.handlePing)
-	s.RegisterMessageHandler(Pong, s.handlePong)
+	s.registerMessageHandler(Ping, s.handlePing)
+	s.registerMessageHandler(Pong, s.handlePong)
 
-	s.RegisterMessageHandler(Alive, s.handleGossip)
-	s.RegisterMessageHandler(Dead, s.handleGossip)
-	s.RegisterMessageHandler(KVSet, s.handleGossip)
-	s.RegisterMessageHandler(KVDelete, s.handleGossip)
-	s.RegisterMessageHandler(KVUpdate, s.handleGossip)
+	s.registerMessageHandler(Alive, s.handleGossip)
+	s.registerMessageHandler(Dead, s.handleGossip)
+	s.registerMessageHandler(KVSet, s.handleGossip)
+	s.registerMessageHandler(KVDelete, s.handleGossip)
+	s.registerMessageHandler(KVUpdate, s.handleGossip)
 
 	//UDP service
 	go s.udpTransport.Handle()
@@ -146,7 +146,7 @@ func (s *SyncMember) Run() error {
 func (s *SyncMember) Join(addr string) error {
 	s.logger.Info("Join in", "member", addr)
 
-	node := NewNode(ResolveAddr(addr), nil)
+	node := newNode(resolveAddr(addr), nil)
 
 	if node.address.Port == s.config.AdvertisePort && node.address.IP.Equal(s.config.AdvertiseIP) {
 		s.logger.Error("Join", "failed", "can't join self")
@@ -155,31 +155,34 @@ func (s *SyncMember) Join(addr string) error {
 
 	remote, err := s.pushPullNode(node, true)
 	if err != nil {
-		s.logger.Error("Join", "failed", err)
+		s.logger.Error("Push Pull Node", "failed", err)
 		return err
 	}
-	s.logger.Debug("Join to", "remote", remote)
-	s.MergeNodes(remote)
+	err = s.MergeNodes(remote)
+	if err != nil {
+		s.logger.Error("MergeNodes", "failed", err)
+		return err
+	}
 	return nil
 }
 
-func (s *SyncMember) JoinDebug(addr string) error {
-	s.logger.Info("JoinDebug", "addr", addr)
+// func (s *SyncMember) joinDebug(addr string) error {
+// 	s.logger.Info("JoinDebug", "addr", addr)
 
-	node := NewNode(ResolveAddr(addr), nil)
-	node.SetAlive()
-	s.AddNode(node)
-	return nil
-}
+// 	node := newNode(resolveAddr(addr), nil)
+// 	node.SetAlive()
+// 	s.AddNode(node)
+// 	return nil
+// }
 
-func (s *SyncMember) RegisterMessageHandler(msgType MessageType, handler PacketHandlerFunc) {
+func (s *SyncMember) registerMessageHandler(msgType MessageType, handler PacketHandlerFunc) {
 	if handler == nil {
-		panic("Nil RegisterMessageHandler handler")
+		panic("Nil registerMessageHandler handler")
 	}
 	s.messageHandlers[msgType] = handler
 }
 
-func (s *SyncMember) PacketHandler(p *transport.Packet) {
+func (s *SyncMember) packetHandler(p *transport.Packet) {
 	start := time.Now()
 	var packet Packet
 	err := codec.Unmarshal(p.Buffer.Bytes(), &packet)

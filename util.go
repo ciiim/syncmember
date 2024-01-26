@@ -13,7 +13,7 @@ import (
 	"github.com/google/btree"
 )
 
-func SendPacket(transport *transport.UDPTransport, packet *Packet) error {
+func sendPacket(transport *transport.UDPTransport, packet *Packet) error {
 	b, err := codec.Marshal(packet)
 	if err != nil {
 		return err
@@ -22,7 +22,7 @@ func SendPacket(transport *transport.UDPTransport, packet *Packet) error {
 	return transport.SendRaw(buf, packet.To.UDPAddr())
 }
 
-func EqualAddress(a, b Address) bool {
+func equalAddress(a, b Address) bool {
 	return a.IP.Equal(b.IP) && a.Port == b.Port
 }
 
@@ -50,11 +50,11 @@ func kRamdonNodes(k int, nodes []*Node, exclude func(*Node) bool) []*Node {
 	return pickedNodes
 }
 
-func ResolveIP(ip string) net.IP {
+func resolveIP(ip string) net.IP {
 	return net.ParseIP(ip)
 }
 
-func ResolveAddr(addr string) Address {
+func resolveAddr(addr string) Address {
 	if strings.Contains(addr, ":") {
 		ip, port, err := net.SplitHostPort(addr)
 		if err != nil {
@@ -62,7 +62,7 @@ func ResolveAddr(addr string) Address {
 		}
 		portInt, _ := strconv.Atoi(port)
 		return Address{
-			IP:   ResolveIP(ip),
+			IP:   resolveIP(ip),
 			Port: portInt,
 		}
 	}
@@ -78,7 +78,7 @@ func ResolveAddr(addr string) Address {
 	}
 }
 
-func GetHostIP() net.IP {
+func getHostIP() net.IP {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
 		return nil

@@ -12,12 +12,12 @@ const (
 // 也可以由心跳判断的状态变更触发
 func (s *SyncMember) alive(remoteNodeInfo *NodeInfoPayload) {
 	node, ok := s.nodesMap[remoteNodeInfo.Addr.String()]
-	if EqualAddress(remoteNodeInfo.Addr, s.me.address) {
+	if equalAddress(remoteNodeInfo.Addr, s.me.address) {
 		return
 	}
 	// 如果节点不存在，添加节点
 	if !ok {
-		node = NewNode(remoteNodeInfo.Addr, remoteNodeInfo)
+		node = newNode(remoteNodeInfo.Addr, remoteNodeInfo)
 		node.ChangeState(NodeAlive)
 		node.BecomeCredible()
 		s.AddNode(node)
@@ -50,7 +50,7 @@ func (s *SyncMember) alive(remoteNodeInfo *NodeInfoPayload) {
 // 也可以由心跳判断的状态变更触发
 func (s *SyncMember) dead(remoteNodeInfo *NodeInfoPayload) {
 	node, ok := s.nodesMap[remoteNodeInfo.Addr.String()]
-	if EqualAddress(remoteNodeInfo.Addr, s.me.address) {
+	if equalAddress(remoteNodeInfo.Addr, s.me.address) {
 		return
 	}
 	// 如果该死亡节点不存在，不需要处理

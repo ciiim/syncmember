@@ -22,7 +22,7 @@ type GossipBoardcast struct {
 	life int
 }
 
-func NewBoardcastQueue() *BoardcastQueue {
+func newBoardcastQueue() *BoardcastQueue {
 	return &BoardcastQueue{}
 }
 
@@ -32,7 +32,7 @@ func (b *BoardcastQueue) lazyInit() {
 	}
 }
 
-func NewGossipBoardcast(name string, msg *Message) *GossipBoardcast {
+func newGossipBoardcast(name string, msg *Message) *GossipBoardcast {
 	return &GossipBoardcast{
 		name: name,
 		msg:  msg,
@@ -55,8 +55,8 @@ func (g *GossipBoardcast) Less(than btree.Item) bool {
 }
 
 func (b *BoardcastQueue) PutMessage(msgType MessageType, name string, payload []byte) {
-	msg := NewMessage(msgType, payload)
-	b.putGossipBoardcast(NewGossipBoardcast(name+msgType.String(), msg))
+	msg := newMessage(msgType, payload)
+	b.putGossipBoardcast(newGossipBoardcast(name+msgType.String(), msg))
 }
 
 func (b *BoardcastQueue) putGossipBoardcast(item Boardcast) btree.Item {

@@ -8,7 +8,7 @@ type Packet struct {
 	To          Address
 }
 
-func NewPacket(msg *Message, from, to Address) *Packet {
+func newPacket(msg *Message, from, to Address) *Packet {
 	return &Packet{
 		MessageBody: msg,
 		From:        from,

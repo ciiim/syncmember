@@ -3,6 +3,7 @@ package syncmember
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net"
 
 	"github.com/ciiim/syncmember/codec"
@@ -49,15 +50,14 @@ func (s *SyncMember) handlepushPull(conn net.Conn) {
 	s.logger.Debug("handlepushPull", "remote addr", conn.RemoteAddr().String())
 
 	//PULL OR GET
-	buf := bytes.NewBuffer(nil)
-	if err := reader.ReadTCPMessage(conn, buf, codec.AACoder); err != nil {
-		s.logger.Error("handlepushPull", "read error", err)
+	res, err := io.ReadAll(reader.NewAReader(conn))
+	if err != nil {
 		return
 	}
 
 	//unmarshal body
 	var remote []NodeInfoPayload
-	if err := codec.Unmarshal(buf.Bytes(), &remote); err != nil {
+	if err := codec.Unmarshal(res, &remote); err != nil {
 		s.logger.Error("handlepushPull", "unmarshal error", err)
 		return
 	}
@@ -129,6 +129,7 @@ func (s *SyncMember) pushPullNodeInternal(node *Node, nodes []*Node) (remote []N
 
 	//PULL or GET
 	buf.Reset()
+
 	if err = reader.ReadTCPMessage(conn, buf, codec.AACoder); err != nil {
 		return
 	}

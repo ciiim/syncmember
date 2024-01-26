@@ -24,8 +24,8 @@ func (s *SyncMember) doPing() {
 	})
 	var packet *Packet
 	for _, node := range nodes {
-		packet = NewPacket(NewPingMessage(), s.host, node.Addr())
-		if err := SendPacket(s.udpTransport, packet); err != nil {
+		packet = newPacket(newPingMessage(), s.host, node.Addr())
+		if err := sendPacket(s.udpTransport, packet); err != nil {
 			s.logger.Error("SendMsg", "error", err)
 		}
 		s.waitPongMap[node.address.String()] = node
@@ -89,8 +89,8 @@ func (s *SyncMember) handlePing(packet *Packet) {
 		s.logger.Warn("Received an unknown Ping", "node addr", packet.From)
 	} else {
 		//创建一个Pong消息
-		PongPacket := NewPacket(NewPongMessage(packet.MessageBody.Seq), s.host, packet.From)
-		if err := SendPacket(s.udpTransport, PongPacket); err != nil {
+		PongPacket := newPacket(newPongMessage(packet.MessageBody.Seq), s.host, packet.From)
+		if err := sendPacket(s.udpTransport, PongPacket); err != nil {
 			s.logger.Error("SendMsg", "error", err)
 		}
 	}

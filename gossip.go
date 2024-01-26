@@ -31,7 +31,7 @@ func (s *SyncMember) doGossip() {
 	for _, node := range nodes {
 		for _, msgBytes := range messages { //XXX: 可以组装成一个包，无需多次发送
 			packet := buildPacketMessageBytes(msgBytes, s.host, node.Addr())
-			if err := SendPacket(s.udpTransport, packet); err != nil {
+			if err := sendPacket(s.udpTransport, packet); err != nil {
 				s.logger.Error("SendMsg", "error", err)
 				continue
 			}
@@ -41,7 +41,7 @@ func (s *SyncMember) doGossip() {
 }
 
 func buildPacketMessageBytes(msg *Message, from, to Address) *Packet {
-	return NewPacket(msg, from, to)
+	return newPacket(msg, from, to)
 }
 
 func (s *SyncMember) handleGossip(packet *Packet) {
