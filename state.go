@@ -37,7 +37,7 @@ func (s *SyncMember) alive(remoteNodeInfo *NodeInfoPayload) {
 		return
 	}
 
-	s.logger.Info("Node become alive", "node", remoteNodeInfo.Addr.String())
+	s.logger.Info("Node Alive", "node", remoteNodeInfo.Addr.String())
 	node.increaseVersionTo(remoteNodeInfo.Version)
 
 	// 如果节点存在，但是状态不是存活，设置节点状态为存活
@@ -77,7 +77,7 @@ func (s *SyncMember) dead(remoteNodeInfo *NodeInfoPayload) {
 		return
 	}
 
-	s.logger.Info("Node Become dead", "node", remoteNodeInfo.Addr.String())
+	s.logger.Info("Node Dead", "node", remoteNodeInfo.Addr.String())
 	node.increaseVersionTo(remoteNodeInfo.Version)
 
 	// 如果节点存在，但是状态不是死亡，设置节点状态为死亡

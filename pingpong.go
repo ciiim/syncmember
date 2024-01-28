@@ -44,7 +44,7 @@ func (s *SyncMember) doPing() {
 func (s *SyncMember) clearLimitExceededNode() {
 	for k, node := range s.waitPongMap {
 		if node.nodeLocalInfo.credibility.Load()-1 <= 0 {
-			s.logger.Info("[Ping failed]Node Become Dead", "node addr", node.Addr().String())
+			s.logger.Info("[Ping failed]Node Dead", "node addr", node.Addr().String())
 			node.setDead()
 
 			if s.nodeEvent != nil {
@@ -74,7 +74,7 @@ func (s *SyncMember) handlePong(packet *Packet) {
 	//如果一段时间后才收到Pong，且节点为死亡状态，转变为存活节点
 	node, ok := s.nodesMap[from]
 	if ok && node.nodeLocalInfo.nodeState == NodeDead {
-		s.logger.Warn("Pong Find a DeadNode become alive", "this node", node)
+		s.logger.Warn("[Pong] Node Dead", "this node", node)
 		node.setAlive()
 
 		if s.nodeEvent != nil {
