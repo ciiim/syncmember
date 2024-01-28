@@ -37,6 +37,13 @@ func (r *AReader) Read(b []byte) (n int, err error) {
 		if err != nil {
 			return 0, err
 		}
+
+		// 数据头部校验
+		if err = r.coder.ValidateHeader(r.head[:]); err != nil {
+			return 0, err
+		}
+
+		// 记录数据内容长度
 		r.contentLength = r.coder.GetBodyLength(r.head[:])
 	}
 
