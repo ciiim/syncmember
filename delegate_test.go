@@ -67,7 +67,6 @@ func TestDelegate(t *testing.T) {
 		break
 	case <-time.After(500 * time.Millisecond):
 		t.Errorf("Joined expected true but found false")
-		t.Fail()
 	}
 
 	//test dead
@@ -77,7 +76,6 @@ func TestDelegate(t *testing.T) {
 		break
 	case <-time.After(3000 * time.Millisecond):
 		t.Errorf("Dead expected true but found false")
-		t.Fail()
 	}
 
 }
