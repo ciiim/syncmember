@@ -74,7 +74,7 @@ func (s *SyncMember) handlePong(packet *Packet) {
 	//如果一段时间后才收到Pong，且节点为死亡状态，转变为存活节点
 	node, ok := s.nodesMap[from]
 	if ok && node.nodeLocalInfo.nodeState == NodeDead {
-		s.logger.Warn("[Pong] Node Dead", "this node", node)
+		s.logger.Warn("[Pong] Node Alive", "this node", node)
 		node.setAlive()
 
 		if s.nodeEvent != nil {
