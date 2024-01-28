@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -38,13 +39,14 @@ func NewTCPTransport(conf *TCPConfig, stopVar *atomic.Bool, handler func(net.Con
 	}
 }
 
-func (t *TCPTransport) Listen() {
+func (t *TCPTransport) Listen(wg *sync.WaitGroup) {
 	l, err := net.Listen("tcp", t.config.ListenAddr)
 	if err != nil {
 		t.logger.Error("TCPTransport listen error", err)
 	}
 	t.listener = l
 	t.logger.Info("TCPTransport listening", "addr", t.config.ListenAddr)
+	wg.Done()
 	for {
 		if err = t.accept(); err != nil {
 			t.logger.Error("TCPTransport listen error", err)

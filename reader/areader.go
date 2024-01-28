@@ -56,7 +56,7 @@ func (r *AReader) Read(b []byte) (n int, err error) {
 
 func ReadTCPMessage(conn net.Conn, buf *bytes.Buffer, coder codec.Coder) error {
 	header := make([]byte, codec.HeaderLength)
-	_, err := conn.Read(header)
+	_, err := io.ReadFull(conn, header)
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func ReadTCPMessage(conn net.Conn, buf *bytes.Buffer, coder codec.Coder) error {
 	//read body
 	bodyLen := coder.GetBodyLength(header)
 	b := make([]byte, bodyLen)
-	_, err = conn.Read(b)
+	_, err = io.ReadFull(conn, b)
 	if err != nil {
 		return err
 	}

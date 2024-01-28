@@ -91,7 +91,7 @@ func (u *UDPTransport) buildPacket(from *net.UDPAddr, buffer []byte) *Packet {
 	return packet
 }
 
-func (u *UDPTransport) Listen() {
+func (u *UDPTransport) Listen(wg *sync.WaitGroup) {
 	var err error
 	u.conn, err = listenUDP(u.config.ListenAddr)
 	if err != nil {
@@ -99,6 +99,7 @@ func (u *UDPTransport) Listen() {
 		return
 	}
 	u.logger.Info("UDPTransport listening", "listen addr", u.config.ListenAddr)
+	wg.Done()
 	for {
 		buf := make([]byte, u.config.UDPBuffer)
 		n, addr, err := u.conn.ReadFromUDP(buf)
