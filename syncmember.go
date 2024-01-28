@@ -46,6 +46,10 @@ type SyncMember struct {
 
 	messageHandlers map[MessageType]PacketHandlerFunc
 
+	nodeEvent NodeEventDelegate
+
+	kWatcher *kVWatcher
+
 	stopCh  chan struct{}
 	stopVar *atomic.Bool
 }
@@ -66,6 +70,8 @@ func NewSyncMember(nodeName string, config *Config) *SyncMember {
 		kvTreeMu: new(sync.RWMutex),
 
 		messageHandlers: make(map[MessageType]PacketHandlerFunc),
+
+		kWatcher: newKVWatcher(),
 	}
 	err := s.init(config)
 	if err != nil {
@@ -103,7 +109,7 @@ func (s *SyncMember) init(config *Config) error {
 
 	s.host = s.host.WithName(s.nodeName)
 	s.me = newNode(s.host, nil)
-	s.me.SetAlive()
+	s.me.setAlive()
 
 	s.udpTransport = transport.NewUDPTransport(&udpConfig, s.stopVar)
 	s.tcpTransport = transport.NewTCPTransport(&tcpConfig, s.stopVar, s.handlepushPull)
@@ -179,6 +185,9 @@ func (s *SyncMember) registerMessageHandler(msgType MessageType, handler PacketH
 	if handler == nil {
 		panic("Nil registerMessageHandler handler")
 	}
+	if s.messageHandlers == nil {
+		s.messageHandlers = make(map[MessageType]PacketHandlerFunc)
+	}
 	s.messageHandlers[msgType] = handler
 }
 
@@ -201,6 +210,10 @@ func (s *SyncMember) packetHandler(p *transport.Packet) {
 }
 
 func (s *SyncMember) Shutdown() {
+	if s.stopVar.Load() {
+		s.logger.Warn("Already shutdown")
+		return
+	}
 	s.logger.Info("Shutdown...")
 	s.stopCh <- struct{}{}
 }
@@ -210,6 +223,7 @@ func (s *SyncMember) waitShutdown() {
 }
 
 func (s *SyncMember) stop() {
+
 	s.stopVar.Store(true)
 	s.pingTicker.Stop()
 	s.pushPullTicker.Stop()
