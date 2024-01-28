@@ -11,8 +11,8 @@ import (
 
 var (
 	//Interval
-	FastPingInterval    = 300 * time.Millisecond
-	NormalPingInterval  = 500 * time.Millisecond
+	FastPingInterval    = 200 * time.Millisecond
+	NormalPingInterval  = 400 * time.Millisecond
 	SlowPingInterval    = 1 * time.Second
 	DefaultPingInterval = NormalPingInterval
 
@@ -21,8 +21,8 @@ var (
 	SlowPushPullInterval    = 60 * time.Second
 	DefaultPushPullInterval = NormalPushPullInterval
 
-	FastGossipInterval    = 300 * time.Millisecond
-	NormalGossipInterval  = 500 * time.Millisecond
+	FastGossipInterval    = 200 * time.Millisecond
+	NormalGossipInterval  = 400 * time.Millisecond
 	SlowGossipInterval    = 1 * time.Second
 	DefaultGossipInterval = NormalGossipInterval
 	///
