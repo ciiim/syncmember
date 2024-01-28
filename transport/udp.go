@@ -119,6 +119,7 @@ func (u *UDPTransport) Listen() {
 	}
 }
 
+// Handle 接受packetCh中的packet，调用PacketHandler处理
 func (u *UDPTransport) Handle() {
 	for {
 		packet, ok := <-u.packet()
