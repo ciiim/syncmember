@@ -9,9 +9,11 @@ import (
 )
 
 type AReader struct {
-	conn  net.Conn
-	coder codec.Coder
-	head  [codec.AHeadLength]byte
+	conn          net.Conn
+	contentLength int
+	offset        int
+	coder         codec.Coder
+	head          [codec.AHeadLength]byte
 }
 
 func NewAReader(conn net.Conn) *AReader {
@@ -29,22 +31,26 @@ func (r *AReader) Close() error {
 }
 
 // if head is not read, read head first
-func (r *AReader) Read(p []byte) (n int, err error) {
+func (r *AReader) Read(b []byte) (n int, err error) {
 	if r.head[0] == 0 {
-		_, err = io.ReadFull(r.conn, r.head[:])
+		_, err = r.conn.Read(r.head[:])
 		if err != nil {
 			return 0, err
 		}
+		r.contentLength = r.coder.GetBodyLength(r.head[:])
 	}
-	bodyLen := r.coder.GetBodyLength(r.head[:])
-	if bodyLen > len(p) {
-		return 0, io.ErrShortBuffer
-	}
-	n, err = io.ReadFull(r.conn, p[:bodyLen])
+
+	n, err = r.conn.Read(b)
 	if err != nil {
-		return 0, err
+		return n, err
 	}
-	r.head[0] = 0
+	r.offset += n
+	if r.offset >= r.contentLength {
+		r.offset = 0
+		r.contentLength = 0
+		r.head[0] = 0
+		return n, io.EOF
+	}
 	return n, nil
 }
 
