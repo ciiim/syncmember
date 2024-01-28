@@ -82,12 +82,5 @@ func (s *SyncMember) handleKV(msg *Message) {
 		return
 	}
 
-	switch msg.MsgType {
-	case KVSet:
-		s.setKV(&kv)
-	case KVDelete:
-		s.deleteKV(&kv)
-	case KVUpdate:
-		s.updateKV(&kv)
-	}
+	s.kvOperation(msg.MsgType, &kv)
 }

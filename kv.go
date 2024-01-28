@@ -12,100 +12,115 @@ func (s *SyncMember) lazyInit() {
 	}
 }
 
-type KVItem struct {
+type kVItem struct {
 	key   string
 	value []byte
 }
 
-func (k *KVItem) Less(than btree.Item) bool {
-	return k.key < than.(*KVItem).key
+func (k *kVItem) Less(than btree.Item) bool {
+	return k.key < than.(*kVItem).key
 }
 
-func newKVItem(key string, value []byte) *KVItem {
-	return &KVItem{
+func newKVItem(key string, value []byte) *kVItem {
+	return &kVItem{
 		key:   key,
 		value: value,
 	}
 }
 
-func (s *SyncMember) setKV(kv *KeyValuePayload) {
+func (s *SyncMember) kvOperation(op MessageType, kv *KeyValuePayload) {
 	s.kvTreeMu.Lock()
 	defer s.kvTreeMu.Unlock()
 	s.lazyInit()
 	item := newKVItem(kv.Key, kv.Value)
 
+	shouldBoardcast := false
+	var oldItem *kVItem
+
+	switch op {
+	case KVSet:
+		shouldBoardcast = s.setKV(item)
+	case KVDelete:
+		shouldBoardcast, oldItem = s.deleteKV(item)
+	case KVUpdate:
+		shouldBoardcast, _ = s.updateKV(item)
+	default:
+		return
+	}
+
+	if shouldBoardcast {
+		switch op {
+		case KVSet:
+			// 使用协程通知，防止阻塞
+			go s.notifyKVWatcher(EventKVSet, item)
+		case KVDelete:
+			go s.notifyKVWatcher(EventKVDelete, oldItem)
+		case KVUpdate:
+			go s.notifyKVWatcher(EventKVUpdate, item)
+		}
+		//广播
+		s.boardcastQueue.PutMessage(op, kv.Key, kv.Encode().Bytes())
+	}
+}
+
+func (s *SyncMember) setKV(item *kVItem) bool {
 	if exist := s.kvcopyTree.Has(item); exist {
-		return
+		return false
 	}
 
-	s.logger.Info("SetKV", "key", kv.Key)
 	s.kvcopyTree.ReplaceOrInsert(item)
-	s.notifyKVWatcher(EventKVSet, kv)
-	//广播
-	s.boardcastQueue.PutMessage(KVSet, kv.Key, kv.Encode().Bytes())
+	s.logger.Info("SetKV", "key", item.key)
+	return true
 }
 
-func (s *SyncMember) deleteKV(kv *KeyValuePayload) {
-	s.kvTreeMu.Lock()
-	defer s.kvTreeMu.Unlock()
-	s.lazyInit()
-	item := newKVItem(kv.Key, kv.Value)
-
-	s.logger.Info("DeleteKV", "key", kv.Key)
-	if deletedItem := s.kvcopyTree.Delete(item); deletedItem == nil {
-		return
+func (s *SyncMember) deleteKV(item *kVItem) (bool, *kVItem) {
+	deletedItem := s.kvcopyTree.Delete(item)
+	if deletedItem == nil {
+		return false, nil
 	}
-
-	s.notifyKVWatcher(EventKVDelete, kv)
-
-	//广播
-	s.boardcastQueue.PutMessage(KVDelete, kv.Key, kv.Encode().Bytes())
+	s.logger.Info("DeleteKV", "key", item.key)
+	return true, deletedItem.(*kVItem)
 }
 
-func (s *SyncMember) updateKV(kv *KeyValuePayload) {
-	s.kvTreeMu.Lock()
-	defer s.kvTreeMu.Unlock()
-	s.lazyInit()
-	item := newKVItem(kv.Key, kv.Value)
-
+func (s *SyncMember) updateKV(item *kVItem) (bool, *kVItem) {
 	getItem := s.kvcopyTree.Get(item)
 	if getItem == nil {
-		return
+		return false, nil
 	}
-	getBytes := getItem.(*KVItem).value
+	getBytes := getItem.(*kVItem).value
 	if getBytes == nil {
-		return
+		return false, nil
 	}
 
 	//如果值相同，不需要更新
-	if bytes.Equal(getBytes, kv.Value) {
-		return
+	if bytes.Equal(getBytes, item.value) {
+		return false, nil
 	}
 
-	s.logger.Info("UpdateKV", "key", kv.Key)
-	s.kvcopyTree.ReplaceOrInsert(item)
-
-	s.notifyKVWatcher(EventKVUpdate, kv)
-
-	//广播
-	s.boardcastQueue.PutMessage(KVUpdate, kv.Key, kv.Encode().Bytes())
+	old := s.kvcopyTree.ReplaceOrInsert(item)
+	s.logger.Info("UpdateKV", "key", item.key)
+	if old == nil {
+		return false, nil
+	}
+	return true, old.(*kVItem)
 }
 
 func (s *SyncMember) SetKV(key string, value []byte) {
-	s.setKV(&KeyValuePayload{
+	s.kvOperation(KVSet, &KeyValuePayload{
 		Key:   key,
 		Value: value,
 	})
 }
 
 func (s *SyncMember) DeleteKV(key string) {
-	s.deleteKV(&KeyValuePayload{
-		Key: key,
+	s.kvOperation(KVDelete, &KeyValuePayload{
+		Key:   key,
+		Value: nil,
 	})
 }
 
 func (s *SyncMember) UpdateKV(key string, value []byte) {
-	s.updateKV(&KeyValuePayload{
+	s.kvOperation(KVUpdate, &KeyValuePayload{
 		Key:   key,
 		Value: value,
 	})
@@ -121,5 +136,5 @@ func (s *SyncMember) GetValue(key string) []byte {
 	if res == nil {
 		return nil
 	}
-	return res.(*KVItem).value
+	return res.(*kVItem).value
 }
