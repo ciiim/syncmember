@@ -36,7 +36,6 @@ func NewManager() *SignalManager {
 	return s
 }
 
-// 如果没有任何信号监听，直接返回
 func (s *SignalManager) Wait() {
 	if len(s.sigs) == 0 {
 		println("[WARN] no signal watcher")

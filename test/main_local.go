@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
+	"math/rand"
 	"os"
 	"time"
 
@@ -10,7 +12,7 @@ import (
 )
 
 const (
-	LocalAddr = "172.26.123.188"
+	LocalAddr = "127.0.0.1"
 )
 
 func main() {
@@ -21,7 +23,6 @@ func main() {
 	s1 := syncmember.NewSyncMember("node1", syncmember.DebugConfig().SetPort(9001).SetLogLevel(slog.LevelInfo).OpenLogDetail(false))
 	s2 := syncmember.NewSyncMember("node2", syncmember.DebugConfig().SetPort(9002).SetLogLevel(slog.LevelInfo).OpenLogDetail(false))
 	s3 := syncmember.NewSyncMember("node3", syncmember.DebugConfig().SetPort(9003).SetLogLevel(slog.LevelInfo).OpenLogDetail(false))
-	// s4 := syncmember.NewSyncMember("node4", syncmember.DebugConfig().SetPort(9004).SetLogLevel(slog.LevelInfo).OpenLogDetail(false))
 	si.AddWatcher(os.Interrupt, "shutdown", func() {
 		s1.Shutdown()
 		s2.Shutdown()
@@ -36,17 +37,23 @@ func main() {
 	go s1.Run()
 	go s2.Run()
 	go s3.Run()
-	// go s4.Run()
-	s1.Join(LocalAddr + ":9002")
 	s2.Join(LocalAddr + ":9003")
-	time.Sleep(time.Second * 1)
-	s3.SetKV("key1", []byte("value1"))
-	s3.SetKV("key2", []byte("value2"))
-	time.Sleep(time.Second * 10)
-	if res := s2.GetValue("key1"); res == nil {
-		println("key1 not found")
-	} else {
-		println(string(res))
+	s1.Join(LocalAddr + ":9002")
+	time.Sleep(time.Second * 2)
+	for i := 0; i < 10; i++ {
+		// time.Sleep(time.Millisecond * 50)
+		v := fmt.Sprintf("key%d", i)
+		s1.SetKV(v, []byte(v))
+	}
+	time.Sleep(time.Millisecond * 3000)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for i := 0; i < 5; i++ {
+		v := fmt.Sprintf("key%d", r.Intn(10))
+		if res := s2.GetValue(v); res == nil {
+			println(v + "not found")
+		} else {
+			println(string(res))
+		}
 	}
 	s2.Shutdown()
 	<-stopCh
