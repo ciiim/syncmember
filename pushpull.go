@@ -49,7 +49,7 @@ func (s *SyncMember) doPushPull() {
 func (s *SyncMember) handlepushPull(conn net.Conn) {
 	s.logger.Debug("handlepushPull", "remote addr", conn.RemoteAddr().String())
 
-	//PULL OR GET
+	//PULL
 	res, err := io.ReadAll(reader.NewAReader(conn))
 	if err != nil {
 		return
@@ -62,12 +62,14 @@ func (s *SyncMember) handlepushPull(conn net.Conn) {
 		return
 	}
 
+	s.logger.Debug("pushpull received", "num", len(remote))
+
 	if err := s.MergeNodes(remote); err != nil {
 		s.logger.Error("handlepushPull", "merge nodes error", err)
 		return
 	}
 
-	//PUSH or PUT
+	//PUSH
 	nodeinfos := make([]NodeInfoPayload, len(s.nodes)+1)
 	for i, n := range s.nodes {
 		nodeinfos[i] = n.GetInfo()
@@ -108,7 +110,7 @@ func (s *SyncMember) pushPullNode(node *Node, join bool) (remote []NodeInfoPaylo
 func (s *SyncMember) pushPullNodeInternal(node *Node, nodes []*Node) (remote []NodeInfoPayload, err error) {
 	s.logger.Debug("pushPullNode", "target node", node.Addr())
 
-	//PUSH or PUT
+	//PUSH
 	nodeinfos := make([]NodeInfoPayload, len(nodes))
 	for i, n := range nodes {
 		nodeinfos[i] = n.GetInfo()
@@ -126,10 +128,9 @@ func (s *SyncMember) pushPullNodeInternal(node *Node, nodes []*Node) (remote []N
 	if err != nil {
 		return
 	}
-
-	//PULL or GET
+	defer conn.Close()
+	//PULL
 	buf.Reset()
-
 	if err = reader.ReadTCPMessage(conn, buf, codec.AACoder); err != nil {
 		return
 	}
