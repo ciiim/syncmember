@@ -111,16 +111,16 @@ func newPongMessage(seq uint64) *Message {
 	}
 }
 
-func newAliveMessage(payload []byte) *Message {
-	return &Message{
-		MsgType: Alive,
-		Payload: payload,
-	}
-}
+// func newAliveMessage(payload []byte) *Message {
+// 	return &Message{
+// 		MsgType: Alive,
+// 		Payload: payload,
+// 	}
+// }
 
-func newDeadMessage(payload []byte) *Message {
-	return &Message{
-		MsgType: Dead,
-		Payload: payload,
-	}
-}
+// func newDeadMessage(payload []byte) *Message {
+// 	return &Message{
+// 		MsgType: Dead,
+// 		Payload: payload,
+// 	}
+// }
