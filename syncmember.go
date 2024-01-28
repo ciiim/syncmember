@@ -2,7 +2,6 @@ package syncmember
 
 import (
 	"fmt"
-	"log"
 	"log/slog"
 	"net"
 	"sync"
@@ -75,8 +74,7 @@ func NewSyncMember(nodeName string, config *Config) *SyncMember {
 	}
 	err := s.init(config)
 	if err != nil {
-		log.Fatalln(err)
-		// return nil
+		return nil
 	}
 	return s
 }
@@ -123,16 +121,17 @@ func (s *SyncMember) init(config *Config) error {
 	s.registerMessageHandler(KVDelete, s.handleGossip)
 	s.registerMessageHandler(KVUpdate, s.handleGossip)
 
+	wg := new(sync.WaitGroup)
+	wg.Add(2)
+
 	//UDP service
 	go s.udpTransport.Handle()
-	go s.udpTransport.Listen()
+	go s.udpTransport.Listen(wg)
 
 	//TCP service
-	go s.tcpTransport.Listen()
+	go s.tcpTransport.Listen(wg)
 
-	// go monitor.ReportMemoryUsagePer(time.Second * 10)
-
-	time.Sleep(100 * time.Millisecond) //FIXME: wait for udp service start
+	wg.Wait()
 
 	return nil
 }
