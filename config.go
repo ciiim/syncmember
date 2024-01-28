@@ -16,9 +16,9 @@ var (
 	SlowPingInterval    = 1 * time.Second
 	DefaultPingInterval = NormalPingInterval
 
-	FastPushPullInterval    = 10 * time.Millisecond
-	NormalPushPullInterval  = 20 * time.Second
-	SlowPushPullInterval    = 30 * time.Second
+	FastPushPullInterval    = 20 * time.Second
+	NormalPushPullInterval  = 40 * time.Second
+	SlowPushPullInterval    = 60 * time.Second
 	DefaultPushPullInterval = NormalPushPullInterval
 
 	FastGossipInterval    = 300 * time.Millisecond
@@ -104,9 +104,9 @@ var (
 
 			AdvertisePort: DefaultAdvertisePort,
 
-			PingInterval:     DefaultPingInterval,
+			PingInterval:     FastGossipInterval,
 			PushPullInterval: FastPushPullInterval,
-			GossipInterval:   DefaultGossipInterval,
+			GossipInterval:   FastGossipInterval,
 
 			TCPTimeout: DefaultTCPTimeout,
 
