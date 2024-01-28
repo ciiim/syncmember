@@ -12,17 +12,25 @@ func (s *SyncMember) ping() {
 }
 
 func (s *SyncMember) doPing() {
-	s.clearwaitPongMap()
+
+	//清理超时节点
+	s.clearLimitExceededNode()
+
 	s.nMutex.Lock()
 	defer s.nMutex.Unlock()
 	s.logger.Debug("Ping", "node list length", len(s.nodes))
 	if len(s.nodes) == 0 {
 		return
 	}
+
+	//Pick random nodes to ping
 	nodes := kRamdonNodes(s.config.Fanout, s.nodes, func(n *Node) bool {
 		return !n.IsCredible()
 	})
+
 	var packet *Packet
+
+	//发送Ping消息
 	for _, node := range nodes {
 		packet = newPacket(newPingMessage(), s.host, node.Addr())
 		if err := sendPacket(s.udpTransport, packet); err != nil {
@@ -33,11 +41,16 @@ func (s *SyncMember) doPing() {
 	}
 }
 
-func (s *SyncMember) clearwaitPongMap() {
+func (s *SyncMember) clearLimitExceededNode() {
 	for k, node := range s.waitPongMap {
 		if node.nodeLocalInfo.credibility.Load()-1 <= 0 {
 			s.logger.Info("[Ping failed]Node Become Dead", "node addr", node.Addr().String())
-			node.SetDead()
+			node.setDead()
+
+			if s.nodeEvent != nil {
+				s.nodeEvent.NotifyDead(node)
+			}
+
 			delete(s.waitPongMap, k)
 			//添加广播
 			nodePayload := &NodeInfoPayload{
@@ -62,7 +75,12 @@ func (s *SyncMember) handlePong(packet *Packet) {
 	node, ok := s.nodesMap[from]
 	if ok && node.nodeLocalInfo.nodeState == NodeDead {
 		s.logger.Warn("Pong Find a DeadNode become alive", "this node", node)
-		node.SetAlive()
+		node.setAlive()
+
+		if s.nodeEvent != nil {
+			s.nodeEvent.NotifyAlive(node)
+		}
+
 		return
 	}
 	if !ok {
@@ -76,7 +94,7 @@ func (s *SyncMember) handlePong(packet *Packet) {
 		s.logger.Warn("Unknown Pong Message", "From", packet.From)
 		return
 	}
-	node.BecomeCredible()
+	node.becomeCredible()
 	delete(s.waitPongMap, from)
 }
 

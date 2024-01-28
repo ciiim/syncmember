@@ -52,30 +52,30 @@ func newNode(addr Address, nodeInfo *NodeInfoPayload) *Node {
 }
 
 // 改变节点状态，重置节点可信度，增加版本号
-func (n *Node) SetAlive() {
+func (n *Node) setAlive() {
 	if n.nodeLocalInfo.nodeState == NodeAlive {
 		return
 	}
-	n.ChangeState(NodeAlive)
-	n.IncreaseVersionTo(n.GetInfo().Version + 1)
-	n.BecomeCredible()
+	n.changeState(NodeAlive)
+	n.increaseVersionTo(n.GetInfo().Version + 1)
+	n.becomeCredible()
 }
 
 // 改变节点状态，重置节点可信度，增加版本号
-func (n *Node) SetDead() {
+func (n *Node) setDead() {
 	if n.nodeLocalInfo.nodeState == NodeDead {
 		return
 	}
-	n.ChangeState(NodeDead)
-	n.IncreaseVersionTo(n.GetInfo().Version + 1)
-	n.BecomeUnCredible()
+	n.changeState(NodeDead)
+	n.increaseVersionTo(n.GetInfo().Version + 1)
+	n.becomeUnCredible()
 }
 
-func (n *Node) BecomeUnCredible() {
+func (n *Node) becomeUnCredible() {
 	n.nodeLocalInfo.credibility.Store(0)
 }
 
-func (n *Node) BecomeCredible() {
+func (n *Node) becomeCredible() {
 	n.nodeLocalInfo.credibility.Store(3)
 }
 
@@ -83,7 +83,7 @@ func (n *Node) IsCredible() bool {
 	return n.nodeLocalInfo.credibility.Load() > 0
 }
 
-func (n *Node) IncreaseVersionTo(d int64) bool {
+func (n *Node) increaseVersionTo(d int64) bool {
 	if d < n.nodeLocalInfo.version.Load() {
 		return false
 	}
@@ -95,7 +95,7 @@ func (n *Node) NodeState() NodeStateType {
 	return n.nodeLocalInfo.nodeState
 }
 
-func (n *Node) ChangeState(newState NodeStateType) {
+func (n *Node) changeState(newState NodeStateType) {
 	n.nodeLocalInfo.nodeState = newState
 }
 

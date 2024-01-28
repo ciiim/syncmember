@@ -18,9 +18,13 @@ func (s *SyncMember) alive(remoteNodeInfo *NodeInfoPayload) {
 	// 如果节点不存在，添加节点
 	if !ok {
 		node = newNode(remoteNodeInfo.Addr, remoteNodeInfo)
-		node.ChangeState(NodeAlive)
-		node.BecomeCredible()
+		node.changeState(NodeAlive)
+		node.becomeCredible()
 		s.AddNode(node)
+
+		if s.nodeEvent != nil {
+			s.nodeEvent.NotifyJoin(node)
+		}
 
 		//广播
 		s.boardcastQueue.PutMessage(Alive, remoteNodeInfo.Addr.String(), remoteNodeInfo.Encode().Bytes())
@@ -34,12 +38,16 @@ func (s *SyncMember) alive(remoteNodeInfo *NodeInfoPayload) {
 	}
 
 	s.logger.Info("Node become alive", "node", remoteNodeInfo.Addr.String())
-	node.IncreaseVersionTo(remoteNodeInfo.Version)
+	node.increaseVersionTo(remoteNodeInfo.Version)
 
 	// 如果节点存在，但是状态不是存活，设置节点状态为存活
 	if node.nodeLocalInfo.nodeState != NodeAlive {
-		node.ChangeState(NodeAlive)
-		node.BecomeCredible()
+		node.changeState(NodeAlive)
+		node.becomeCredible()
+
+		if s.nodeEvent != nil {
+			s.nodeEvent.NotifyAlive(node)
+		}
 
 		//广播
 		s.boardcastQueue.PutMessage(Alive, remoteNodeInfo.Addr.String(), remoteNodeInfo.Encode().Bytes())
@@ -70,12 +78,16 @@ func (s *SyncMember) dead(remoteNodeInfo *NodeInfoPayload) {
 	}
 
 	s.logger.Info("Node Become dead", "node", remoteNodeInfo.Addr.String())
-	node.IncreaseVersionTo(remoteNodeInfo.Version)
+	node.increaseVersionTo(remoteNodeInfo.Version)
 
 	// 如果节点存在，但是状态不是死亡，设置节点状态为死亡
 	if node.nodeLocalInfo.nodeState != NodeDead {
-		node.ChangeState(NodeDead)
-		node.BecomeUnCredible()
+		node.changeState(NodeDead)
+		node.becomeUnCredible()
+
+		if s.nodeEvent != nil {
+			s.nodeEvent.NotifyDead(node)
+		}
 
 		//广播
 		s.boardcastQueue.PutMessage(Dead, remoteNodeInfo.Addr.String(), remoteNodeInfo.Encode().Bytes())
