@@ -33,10 +33,10 @@ func (s *SyncMember) alive(remoteNodeInfo *NodeInfoPayload) {
 		return
 	}
 
-	if remoteNodeInfo.Version <= node.GetInfo().Version {
+	// 版本小于等于当前节点版本，若本地副本状态为死亡，设置为存活；若本地副本状态为存活，返回
+	if remoteNodeInfo.Version <= node.GetInfo().Version && node.nodeLocalInfo.nodeState == NodeAlive {
 		return
 	}
-
 	s.logger.Info("Node Alive", "node", remoteNodeInfo.Addr.String())
 	node.increaseVersionTo(remoteNodeInfo.Version)
 
@@ -57,23 +57,32 @@ func (s *SyncMember) alive(remoteNodeInfo *NodeInfoPayload) {
 // 由远程节点发起的状态变更触发
 // 也可以由心跳判断的状态变更触发
 func (s *SyncMember) dead(remoteNodeInfo *NodeInfoPayload) {
-	node, ok := s.nodesMap[remoteNodeInfo.Addr.String()]
+	//如果收到的死亡节点是自己，需要反驳
 	if equalAddress(remoteNodeInfo.Addr, s.me.address) {
+
+		//	当集群内的一个节点误认为自己死亡时，会发送Gossip消息通知其他节点
+		//	其他节点也会发送Gossip消息通知其他节点
+		//	该节点会多次收到同样节点版本的死亡通知
+		//	如果该节点收到的死亡通知版本和自己的版本一致，说明该节点已经反驳过了，不需要再次反驳
+		if remoteNodeInfo.Version == s.me.GetInfo().Version {
+			return
+		}
+		//同步版本
+		s.me.increaseVersionTo(remoteNodeInfo.Version)
+
+		//反驳
+		s.refute()
 		return
 	}
+
+	node, ok := s.nodesMap[remoteNodeInfo.Addr.String()]
+
 	// 如果该死亡节点不存在，不需要处理
 	if !ok {
 		return
 	}
 
 	if remoteNodeInfo.Version <= node.GetInfo().Version {
-		return
-	}
-
-	//如果收到的死亡节点是自己，需要反驳
-	if remoteNodeInfo.Addr.String() == s.me.address.String() {
-		//反驳
-		s.refute()
 		return
 	}
 
@@ -98,6 +107,8 @@ func (s *SyncMember) refute() {
 	//广播
 	payload := s.me.GetInfo()
 	s.boardcastQueue.PutMessage(Alive, s.me.address.Name, payload.Encode().Bytes())
+
+	s.logger.Info("[Refute] I'm alive", "node", s.me.address.Name)
 }
 
 func (s *SyncMember) GetNodeState(addr string) NodeStateType {
