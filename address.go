@@ -12,7 +12,7 @@ type Address struct {
 	Name       string
 }
 
-func (a Address) WithName(name string) Address {
+func (a Address) withName(name string) Address {
 	a.Name = name
 	return a
 }
@@ -24,14 +24,14 @@ func (a Address) String() string {
 	return a.addrString
 }
 
-func (a Address) UDPAddr() *net.UDPAddr {
+func (a Address) uDPAddr() *net.UDPAddr {
 	return &net.UDPAddr{
 		IP:   a.IP,
 		Port: a.Port,
 	}
 }
 
-func (a Address) TCPAddr() *net.TCPAddr {
+func (a Address) tCPAddr() *net.TCPAddr {
 	return &net.TCPAddr{
 		IP:   a.IP,
 		Port: a.Port,

@@ -17,7 +17,7 @@ func sendPacket(transport *transport.UDPTransport, packet *Packet) error {
 		return err
 	}
 	buf := bytes.NewBuffer(b)
-	return transport.SendRaw(buf, packet.To.UDPAddr())
+	return transport.SendRaw(buf, packet.To.uDPAddr())
 }
 
 func equalAddress(a, b Address) bool {
