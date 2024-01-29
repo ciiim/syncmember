@@ -2,59 +2,75 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"log/slog"
-	"math/rand"
+	"net/http"
 	"os"
-	"time"
+	"runtime"
+	"sync"
 
 	"github.com/ciiim/syncmember"
 	"github.com/ciiim/syncmember/signal"
+
+	_ "net/http/pprof"
 )
 
 const (
-	LocalAddr = "127.0.0.1"
+	LocalAddr   = "127.0.0.1"
+	ClusterSize = 6
 )
 
 func main() {
 
+	go func() {
+		runtime.SetCPUProfileRate(1000)
+		runtime.SetMutexProfileFraction(1)
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
+	var startWg, stopWg sync.WaitGroup
 	stopCh := make(chan struct{})
 
 	si := signal.NewManager()
-	s1 := syncmember.NewSyncMember("node1", syncmember.DebugConfig().SetPort(9001).SetLogLevel(slog.LevelInfo).OpenLogDetail(false))
-	s2 := syncmember.NewSyncMember("node2", syncmember.DebugConfig().SetPort(9002).SetLogLevel(slog.LevelInfo).OpenLogDetail(false))
-	s3 := syncmember.NewSyncMember("node3", syncmember.DebugConfig().SetPort(9003).SetLogLevel(slog.LevelInfo).OpenLogDetail(false))
+
+	nodes := make([]*syncmember.SyncMember, ClusterSize)
+
+	startWg.Add(ClusterSize)
+	stopWg.Add(ClusterSize)
+	for i := 0; i < ClusterSize; i++ {
+		nodes[i] = syncmember.NewSyncMember(
+			fmt.Sprintf("node%d", i+1),
+			syncmember.DebugConfig().SetPort(9000+i+1).SetLogLevel(slog.LevelInfo).OpenLogDetail(false),
+		)
+
+		go func(node *syncmember.SyncMember) {
+			defer stopWg.Done()
+
+			// 运行节点
+			go node.Run()
+
+			startWg.Done()
+			// 等待停止信号
+			<-stopCh
+			// 关闭节点
+			node.Shutdown()
+		}(nodes[i])
+	}
+
+	// 添加信号处理器以优雅地关闭所有节点
 	si.AddWatcher(os.Interrupt, "shutdown", func() {
-		s1.Shutdown()
-		s2.Shutdown()
-		s3.Shutdown()
-		func() {
-			stopCh <- struct{}{}
-			os.Exit(0)
-		}()
-		// s4.Shutdown()
+		close(stopCh)
 	})
+
 	si.Wait()
-	go s1.Run()
-	go s2.Run()
-	go s3.Run()
-	s2.Join(LocalAddr + ":9003")
-	s1.Join(LocalAddr + ":9002")
-	time.Sleep(time.Second * 2)
-	for i := 0; i < 10; i++ {
-		// time.Sleep(time.Millisecond * 50)
-		v := fmt.Sprintf("key%d", i)
-		s1.SetKV(v, []byte(v))
+
+	// 等待所有节点启动
+	startWg.Wait()
+
+	// 让每个节点加入集群
+	for i := 1; i < ClusterSize; i++ {
+		_ = nodes[i].Join(fmt.Sprintf("%s:%d", LocalAddr, 9001))
 	}
-	time.Sleep(time.Millisecond * 3000)
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < 5; i++ {
-		v := fmt.Sprintf("key%d", r.Intn(10))
-		if res := s2.GetValue(v); res == nil {
-			println(v + "not found")
-		} else {
-			println(string(res))
-		}
-	}
-	s2.Shutdown()
-	<-stopCh
+
+	stopWg.Wait()
 }
