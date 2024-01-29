@@ -14,6 +14,15 @@ import (
 )
 
 type SyncMember struct {
+	// hot fields
+	nodesMap map[string]*Node // ip:port -> *Node
+
+	nMutex *sync.Mutex
+	me     *Node
+	nodes  []*Node
+	//等待Pong的节点
+	waitPongMap map[string]*Node //ip:port -> *Node
+
 	config *Config
 
 	nodeName string
@@ -28,13 +37,6 @@ type SyncMember struct {
 
 	udpTransport *transport.UDPTransport
 	tcpTransport *transport.TCPTransport
-
-	nMutex   *sync.Mutex
-	me       *Node
-	nodes    []*Node
-	nodesMap map[string]*Node // ip:port -> *Node
-	//等待Pong的节点
-	waitPongMap map[string]*Node //ip:port -> *Node
 
 	boardcastQueue *BoardcastQueue
 
@@ -105,7 +107,7 @@ func (s *SyncMember) init(config *Config) error {
 		TCPTimeout: s.config.TCPTimeout,
 	}
 
-	s.host = s.host.WithName(s.nodeName)
+	s.host = s.host.withName(s.nodeName)
 	s.me = newNode(s.host, nil)
 	s.me.setAlive()
 
@@ -206,6 +208,10 @@ func (s *SyncMember) packetHandler(p *transport.Packet) {
 	}
 	handler(&packet)
 	s.logger.Debug("handle packet done", "packet message type", packet.MessageBody.MsgType, "cost(ms)", float64(time.Since(start).Microseconds())/1000.0)
+}
+
+func (s *SyncMember) Node() Address {
+	return s.me.address
 }
 
 func (s *SyncMember) Shutdown() {
