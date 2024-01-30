@@ -17,14 +17,14 @@ import (
 
 const (
 	LocalAddr   = "127.0.0.1"
-	ClusterSize = 6
+	ClusterSize = 2
 )
 
 func main() {
-
+	runtime.SetCPUProfileRate(1000)
+	runtime.SetMutexProfileFraction(1)
 	go func() {
-		runtime.SetCPUProfileRate(1000)
-		runtime.SetMutexProfileFraction(1)
+
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
 
