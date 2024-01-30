@@ -144,10 +144,10 @@ func (u *UDPTransport) stopAll() {
 	u.logger.Info("UDPTransport stoped")
 }
 
-func (u *UDPTransport) SendRaw(buf *bytes.Buffer, to *net.UDPAddr) error {
-	n, err := u.conn.WriteToUDP(buf.Bytes(), to)
-	if n != buf.Len() {
-		errmsg := fmt.Errorf("[WARN] sent %d bytes, expected %d bytes", n, buf.Len())
+func (u *UDPTransport) SendRaw(b []byte, to *net.UDPAddr) error {
+	n, err := u.conn.WriteToUDP(b, to)
+	if n != len(b) {
+		errmsg := fmt.Errorf("[WARN] sent %d bytes, expected %d bytes", n, len(b))
 		u.logger.Warn("UDPTransport WARN ", errmsg)
 		return errmsg
 	}

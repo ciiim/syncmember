@@ -1,7 +1,6 @@
 package syncmember
 
 import (
-	"bytes"
 	"math/rand"
 	"net"
 	"strconv"
@@ -16,8 +15,7 @@ func sendPacket(transport *transport.UDPTransport, packet *Packet) error {
 	if err != nil {
 		return err
 	}
-	buf := bytes.NewBuffer(b)
-	return transport.SendRaw(buf, packet.To.uDPAddr())
+	return transport.SendRaw(b, packet.To.uDPAddr())
 }
 
 func equalAddress(a, b Address) bool {
